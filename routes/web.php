@@ -1,10 +1,16 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\CaseConferenceController;
 use App\Http\Controllers\CaseController;
 use App\Http\Controllers\ClassController;
+use App\Http\Controllers\ClassicalGuidanceController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\GroupCounselingController;
 use App\Http\Controllers\GuardianController;
+use App\Http\Controllers\HomeVisitController;
+use App\Http\Controllers\IndividualCounselingController;
+use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentGuidanceController;
 use App\Http\Controllers\StudentViolationController;
@@ -135,5 +141,95 @@ Route::middleware(['auth'])->group(function () {
         Route::post('student-violations', [StudentViolationController::class, 'store'])->name('student-violations.store');
         Route::put('student-violations/{studentViolation}', [StudentViolationController::class, 'update'])->name('student-violations.update');
         Route::delete('student-violations/{studentViolation}', [StudentViolationController::class, 'destroy'])->name('student-violations.destroy');
+    });
+
+    /*
+    |----------------------------------------------------------------------
+    | Fase 4 — Layanan BK
+    |----------------------------------------------------------------------
+    */
+
+    // Konseling Individual
+    Route::middleware('module:counseling_individual,read')->group(function () {
+        Route::get('counseling/individual', [IndividualCounselingController::class, 'index'])->name('counseling.individual.index');
+    });
+    Route::middleware('module:counseling_individual,write')->group(function () {
+        Route::get('counseling/individual/create', [IndividualCounselingController::class, 'create'])->name('counseling.individual.create');
+        Route::post('counseling/individual', [IndividualCounselingController::class, 'store'])->name('counseling.individual.store');
+        Route::get('counseling/individual/{session}/edit', [IndividualCounselingController::class, 'edit'])->name('counseling.individual.edit');
+        Route::put('counseling/individual/{session}', [IndividualCounselingController::class, 'update'])->name('counseling.individual.update');
+        Route::delete('counseling/individual/{session}', [IndividualCounselingController::class, 'destroy'])->name('counseling.individual.destroy');
+    });
+    Route::middleware('module:counseling_individual,read')->group(function () {
+        Route::get('counseling/individual/{session}', [IndividualCounselingController::class, 'show'])->name('counseling.individual.show');
+    });
+
+    // Konseling Kelompok
+    Route::middleware('module:counseling_group,read')->group(function () {
+        Route::get('counseling/group', [GroupCounselingController::class, 'index'])->name('counseling.group.index');
+    });
+    Route::middleware('module:counseling_group,write')->group(function () {
+        Route::get('counseling/group/create', [GroupCounselingController::class, 'create'])->name('counseling.group.create');
+        Route::post('counseling/group', [GroupCounselingController::class, 'store'])->name('counseling.group.store');
+        Route::get('counseling/group/{session}/edit', [GroupCounselingController::class, 'edit'])->name('counseling.group.edit');
+        Route::put('counseling/group/{session}', [GroupCounselingController::class, 'update'])->name('counseling.group.update');
+        Route::delete('counseling/group/{session}', [GroupCounselingController::class, 'destroy'])->name('counseling.group.destroy');
+    });
+    Route::middleware('module:counseling_group,read')->group(function () {
+        Route::get('counseling/group/{session}', [GroupCounselingController::class, 'show'])->name('counseling.group.show');
+    });
+
+    // Bimbingan Klasikal
+    Route::middleware('module:counseling_classical,read')->group(function () {
+        Route::get('counseling/classical', [ClassicalGuidanceController::class, 'index'])->name('counseling.classical.index');
+    });
+    Route::middleware('module:counseling_classical,write')->group(function () {
+        Route::post('counseling/classical', [ClassicalGuidanceController::class, 'store'])->name('counseling.classical.store');
+        Route::put('counseling/classical/{classicalGuidance}', [ClassicalGuidanceController::class, 'update'])->name('counseling.classical.update');
+        Route::delete('counseling/classical/{classicalGuidance}', [ClassicalGuidanceController::class, 'destroy'])->name('counseling.classical.destroy');
+    });
+
+    // Home Visit
+    Route::middleware('module:home_visit,read')->group(function () {
+        Route::get('counseling/home-visit', [HomeVisitController::class, 'index'])->name('home-visits.index');
+    });
+    Route::middleware('module:home_visit,write')->group(function () {
+        Route::get('counseling/home-visit/create', [HomeVisitController::class, 'create'])->name('home-visits.create');
+        Route::post('counseling/home-visit', [HomeVisitController::class, 'store'])->name('home-visits.store');
+        Route::put('counseling/home-visit/{homeVisit}', [HomeVisitController::class, 'update'])->name('home-visits.update');
+        Route::delete('counseling/home-visit/{homeVisit}', [HomeVisitController::class, 'destroy'])->name('home-visits.destroy');
+    });
+    Route::middleware('module:home_visit,read')->group(function () {
+        Route::get('counseling/home-visit/{homeVisit}', [HomeVisitController::class, 'show'])->name('home-visits.show');
+        Route::get('counseling/home-visit/{homeVisit}/pdf', [HomeVisitController::class, 'pdf'])->name('home-visits.pdf');
+    });
+
+    // Konferensi Kasus
+    Route::middleware('module:case_conferences,read')->group(function () {
+        Route::get('case-conferences', [CaseConferenceController::class, 'index'])->name('case-conferences.index');
+    });
+    Route::middleware('module:case_conferences,write')->group(function () {
+        Route::get('case-conferences/create', [CaseConferenceController::class, 'create'])->name('case-conferences.create');
+        Route::post('case-conferences', [CaseConferenceController::class, 'store'])->name('case-conferences.store');
+        Route::put('case-conferences/{caseConference}', [CaseConferenceController::class, 'update'])->name('case-conferences.update');
+        Route::delete('case-conferences/{caseConference}', [CaseConferenceController::class, 'destroy'])->name('case-conferences.destroy');
+    });
+    Route::middleware('module:case_conferences,read')->group(function () {
+        Route::get('case-conferences/{caseConference}', [CaseConferenceController::class, 'show'])->name('case-conferences.show');
+    });
+
+    // Referral
+    Route::middleware('module:referrals,read')->group(function () {
+        Route::get('referrals', [ReferralController::class, 'index'])->name('referrals.index');
+    });
+    Route::middleware('module:referrals,write')->group(function () {
+        Route::get('referrals/create', [ReferralController::class, 'create'])->name('referrals.create');
+        Route::post('referrals', [ReferralController::class, 'store'])->name('referrals.store');
+        Route::put('referrals/{referral}', [ReferralController::class, 'update'])->name('referrals.update');
+        Route::delete('referrals/{referral}', [ReferralController::class, 'destroy'])->name('referrals.destroy');
+    });
+    Route::middleware('module:referrals,read')->group(function () {
+        Route::get('referrals/{referral}', [ReferralController::class, 'show'])->name('referrals.show');
+        Route::get('referrals/{referral}/pdf', [ReferralController::class, 'pdf'])->name('referrals.pdf');
     });
 });

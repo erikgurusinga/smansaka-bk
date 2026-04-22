@@ -17,7 +17,7 @@ export default tseslint.config(
             'react-hooks': reactHooks,
         },
         settings: {
-            react: { version: 'detect' },
+            react: { version: '19.0' },
         },
         rules: {
             ...react.configs.recommended.rules,

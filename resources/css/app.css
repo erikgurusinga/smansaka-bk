@@ -11,10 +11,11 @@
    Tema SMANSAKA — palet teal + accent amber + cool-gray neutral
    ============================================================ */
 @theme {
-    --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    --font-sans:
+        'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
 
-    --color-primary-50:  #eefbfc;
+    --color-primary-50: #eefbfc;
     --color-primary-100: #d5f4f7;
     --color-primary-200: #b0e8ef;
     --color-primary-300: #79d5e2;
@@ -26,7 +27,7 @@
     --color-primary-900: #19414b;
     --color-primary-950: #0a2930;
 
-    --color-accent-50:  #fdfaef;
+    --color-accent-50: #fdfaef;
     --color-accent-100: #faf0d0;
     --color-accent-200: #f4dfa0;
     --color-accent-300: #edc866;
@@ -38,7 +39,7 @@
     --color-accent-900: #6d4b1a;
     --color-accent-950: #3e270b;
 
-    --color-neutral-50:  #f6f8f8;
+    --color-neutral-50: #f6f8f8;
     --color-neutral-100: #e0e6e7;
     --color-neutral-200: #c0ccce;
     --color-neutral-300: #99abae;
@@ -50,15 +51,15 @@
     --color-neutral-900: #333a3c;
     --color-neutral-950: #1e2527;
 
-    --color-success-50:  #eefdf3;
+    --color-success-50: #eefdf3;
     --color-success-500: #22c55e;
     --color-success-700: #15803d;
 
-    --color-danger-50:   #fef2f2;
-    --color-danger-500:  #ef4444;
-    --color-danger-700:  #b91c1c;
+    --color-danger-50: #fef2f2;
+    --color-danger-500: #ef4444;
+    --color-danger-700: #b91c1c;
 
-    --color-warning-50:  #fffbeb;
+    --color-warning-50: #fffbeb;
     --color-warning-500: #f59e0b;
     --color-warning-700: #b45309;
 }
@@ -79,14 +80,21 @@ body {
 }
 
 /* Scrollbar lebih halus */
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: var(--color-neutral-50); }
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+::-webkit-scrollbar-track {
+    background: var(--color-neutral-50);
+}
 ::-webkit-scrollbar-thumb {
     background: var(--color-neutral-200);
     border-radius: 6px;
     border: 2px solid var(--color-neutral-50);
 }
-::-webkit-scrollbar-thumb:hover { background: var(--color-neutral-300); }
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-neutral-300);
+}
 
 /* Selection */
 ::selection {

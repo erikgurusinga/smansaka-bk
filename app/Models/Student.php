@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
@@ -38,5 +39,20 @@ class Student extends Model implements HasMedia
     {
         return $this->belongsToMany(User::class, 'student_guidance', 'student_id', 'user_id')
             ->withPivot('academic_year_id');
+    }
+
+    public function akpdResponses(): HasMany
+    {
+        return $this->hasMany(AkpdResponse::class);
+    }
+
+    public function dcmResponses(): HasMany
+    {
+        return $this->hasMany(DcmResponse::class);
+    }
+
+    public function careerAssessments(): HasMany
+    {
+        return $this->hasMany(CareerAssessment::class);
     }
 }

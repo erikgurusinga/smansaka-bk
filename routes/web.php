@@ -1,16 +1,20 @@
 <?php
 
+use App\Http\Controllers\AkpdController;
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\CareerController;
 use App\Http\Controllers\CaseConferenceController;
 use App\Http\Controllers\CaseController;
 use App\Http\Controllers\ClassController;
 use App\Http\Controllers\ClassicalGuidanceController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DcmController;
 use App\Http\Controllers\GroupCounselingController;
 use App\Http\Controllers\GuardianController;
 use App\Http\Controllers\HomeVisitController;
 use App\Http\Controllers\IndividualCounselingController;
 use App\Http\Controllers\ReferralController;
+use App\Http\Controllers\SociometryController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentGuidanceController;
 use App\Http\Controllers\StudentViolationController;
@@ -231,5 +235,64 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('module:referrals,read')->group(function () {
         Route::get('referrals/{referral}', [ReferralController::class, 'show'])->name('referrals.show');
         Route::get('referrals/{referral}/pdf', [ReferralController::class, 'pdf'])->name('referrals.pdf');
+    });
+
+    /*
+    |----------------------------------------------------------------------
+    | Fase 5 — Instrumen BK
+    |----------------------------------------------------------------------
+    */
+
+    // AKPD
+    Route::middleware('module:instrument_akpd,read')->group(function () {
+        Route::get('instruments/akpd/items', [AkpdController::class, 'items'])->name('akpd.items');
+        Route::get('instruments/akpd/responses', [AkpdController::class, 'responses'])->name('akpd.responses');
+        Route::get('instruments/akpd/{student}/fill', [AkpdController::class, 'fill'])->name('akpd.fill');
+        Route::get('instruments/akpd/{student}/result', [AkpdController::class, 'result'])->name('akpd.result');
+    });
+    Route::middleware('module:instrument_akpd,write')->group(function () {
+        Route::post('instruments/akpd/items', [AkpdController::class, 'storeItem'])->name('akpd.items.store');
+        Route::put('instruments/akpd/items/{item}', [AkpdController::class, 'updateItem'])->name('akpd.items.update');
+        Route::delete('instruments/akpd/items/{item}', [AkpdController::class, 'destroyItem'])->name('akpd.items.destroy');
+        Route::post('instruments/akpd/{student}/submit', [AkpdController::class, 'submit'])->name('akpd.submit');
+    });
+
+    // DCM
+    Route::middleware('module:instrument_dcm,read')->group(function () {
+        Route::get('instruments/dcm/items', [DcmController::class, 'items'])->name('dcm.items');
+        Route::get('instruments/dcm/responses', [DcmController::class, 'responses'])->name('dcm.responses');
+        Route::get('instruments/dcm/{student}/fill', [DcmController::class, 'fill'])->name('dcm.fill');
+        Route::get('instruments/dcm/{student}/result', [DcmController::class, 'result'])->name('dcm.result');
+    });
+    Route::middleware('module:instrument_dcm,write')->group(function () {
+        Route::post('instruments/dcm/items', [DcmController::class, 'storeItem'])->name('dcm.items.store');
+        Route::put('instruments/dcm/items/{item}', [DcmController::class, 'updateItem'])->name('dcm.items.update');
+        Route::delete('instruments/dcm/items/{item}', [DcmController::class, 'destroyItem'])->name('dcm.items.destroy');
+        Route::post('instruments/dcm/{student}/submit', [DcmController::class, 'submit'])->name('dcm.submit');
+    });
+
+    // Sosiometri
+    Route::middleware('module:instrument_sociometry,read')->group(function () {
+        Route::get('instruments/sociometry', [SociometryController::class, 'index'])->name('sociometry.index');
+    });
+    Route::middleware('module:instrument_sociometry,write')->group(function () {
+        Route::get('instruments/sociometry/create', [SociometryController::class, 'create'])->name('sociometry.create');
+        Route::post('instruments/sociometry', [SociometryController::class, 'store'])->name('sociometry.store');
+        Route::get('instruments/sociometry/{session}/fill/{student}', [SociometryController::class, 'fill'])->name('sociometry.fill');
+        Route::post('instruments/sociometry/{session}/fill/{student}', [SociometryController::class, 'submit'])->name('sociometry.submit');
+        Route::delete('instruments/sociometry/{session}', [SociometryController::class, 'destroy'])->name('sociometry.destroy');
+    });
+    Route::middleware('module:instrument_sociometry,read')->group(function () {
+        Route::get('instruments/sociometry/{session}', [SociometryController::class, 'show'])->name('sociometry.show');
+    });
+
+    // Karier / RIASEC
+    Route::middleware('module:instrument_career,read')->group(function () {
+        Route::get('instruments/career', [CareerController::class, 'index'])->name('career.index');
+        Route::get('instruments/career/{student}/fill', [CareerController::class, 'fill'])->name('career.fill');
+        Route::get('instruments/career/{student}/result', [CareerController::class, 'result'])->name('career.result');
+    });
+    Route::middleware('module:instrument_career,write')->group(function () {
+        Route::post('instruments/career/{student}/submit', [CareerController::class, 'submit'])->name('career.submit');
     });
 });

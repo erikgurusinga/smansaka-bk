@@ -158,13 +158,13 @@ const navigation: NavItem[] = [
         children: [
             {
                 label: 'AKPD',
-                href: '/instruments/akpd',
+                href: '/instruments/akpd/responses',
                 icon: <FileQuestion className="h-4 w-4" />,
                 permission: 'instrument_akpd',
             },
             {
                 label: 'DCM',
-                href: '/instruments/dcm',
+                href: '/instruments/dcm/responses',
                 icon: <FileQuestion className="h-4 w-4" />,
                 permission: 'instrument_dcm',
             },

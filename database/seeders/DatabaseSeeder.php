@@ -15,6 +15,9 @@ class DatabaseSeeder extends Seeder
             UserSeeder::class,
             SettingSeeder::class,
             AcademicYearSeeder::class,
+            ViolationSeeder::class,
+            AkpdItemSeeder::class,
+            DcmItemSeeder::class,
         ]);
     }
 }

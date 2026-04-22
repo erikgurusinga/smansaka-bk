@@ -221,6 +221,70 @@ export interface Referral {
     academic_year?: AcademicYear;
 }
 
+export interface AkpdItem {
+    id: number;
+    bidang: 'pribadi' | 'sosial' | 'belajar' | 'karier';
+    question: string;
+    sort_order: number;
+    is_active: boolean;
+}
+
+export interface DcmItem {
+    id: number;
+    topic: string;
+    topic_order: number;
+    question: string;
+    sort_order: number;
+    is_active: boolean;
+}
+
+export interface SociometryCriterion {
+    key: string;
+    label: string;
+    polarity: 'positive' | 'negative';
+}
+
+export interface SociometrySession {
+    id: number;
+    class_id: number;
+    academic_year_id: number;
+    counselor_id: number;
+    title: string;
+    description: string | null;
+    criteria: SociometryCriterion[];
+    max_choices: number;
+    date: string;
+    status: 'draft' | 'open' | 'closed';
+    created_at: string;
+    school_class?: SchoolClass;
+    academic_year?: AcademicYear;
+    counselor?: User;
+}
+
+export interface SociometryChoice {
+    id: number;
+    session_id: number;
+    from_student_id: number;
+    to_student_id: number;
+    criterion_key: string;
+    polarity: 'positive' | 'negative';
+    rank: number;
+}
+
+export interface CareerAssessment {
+    id: number;
+    student_id: number;
+    academic_year_id: number;
+    scores: Record<string, number>;
+    dominant_codes: string | null;
+    recommendations: string | null;
+    notes: string | null;
+    completed_at: string | null;
+    created_at: string;
+    student?: Student;
+    academic_year?: AcademicYear;
+}
+
 export interface PaginatedData<T> {
     data: T[];
     current_page: number;

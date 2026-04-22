@@ -40,7 +40,8 @@ doc/
     ├── 02-fondasi.md                   ← Buku Kedua: Fase 1 Fondasi
     ├── 03-master-data.md               ← Buku Ketiga: Fase 2 Master Data
     ├── 04-buku-kasus.md                ← Buku Keempat: Fase 3 Buku Kasus & Pelanggaran
-    └── 05-layanan-bk.md                ← Buku Kelima: Fase 4 Layanan BK
+    ├── 05-layanan-bk.md                ← Buku Kelima: Fase 4 Layanan BK
+    └── 06-instrumen-bk.md              ← Buku Keenam: Fase 5 Instrumen BK
 ```
 
 ## Daftar Buku
@@ -52,6 +53,7 @@ doc/
 | 03 | Fase 2 — Master Data (siswa, kelas, guru, ortu, penugasan) | [books/03-master-data.md](books/03-master-data.md) |
 | 04 | Fase 3 — Buku Kasus & Poin Pelanggaran | [books/04-buku-kasus.md](books/04-buku-kasus.md) |
 | 05 | Fase 4 — Layanan BK (konseling, home visit, konferensi, referral) | [books/05-layanan-bk.md](books/05-layanan-bk.md) |
+| 06 | Fase 5 — Instrumen BK (AKPD, DCM, Sosiometri, RIASEC) | [books/06-instrumen-bk.md](books/06-instrumen-bk.md) |
 
 ## Catatan
 

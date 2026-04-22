@@ -34,7 +34,8 @@ administrasi BK di SMA. Satu ekosistem visual & teknis dengan `smansaka-inventar
 - ✅ **Fase 1 — Fondasi** SELESAI (2026-04-22). Aplikasi siap login & dashboard.
 - ✅ **Fase 2 — Master Data** SELESAI (2026-04-22). CRUD siswa, kelas, guru, ortu, penugasan siswa asuh, import Excel.
 - ✅ **Fase 3 — Buku Kasus & Pelanggaran** SELESAI (2026-04-22). Buku kasus (5 kategori, workflow, kerahasiaan), jenis pelanggaran + poin, catatan pelanggaran siswa + SP1/SP2/SP3.
-- ⏳ Fase 4–6 belum dikerjakan.
+- ✅ **Fase 4 — Layanan BK** SELESAI (2026-04-22). Konseling individual & kelompok, bimbingan klasikal, home visit (tanda tangan digital + PDF berita acara), konferensi kasus, referral + PDF surat rujukan.
+- ⏳ Fase 5–6 belum dikerjakan.
 - Dokumentasi lengkap ada di `doc/books/` (Buku 1–4).
 
 ## Warna & Tema (konsisten dengan smansaka-inventaris)
@@ -303,13 +304,13 @@ composer dev
 - [x] Akumulasi poin + escalation (SP1/SP2/SP3)
 - [ ] Notifikasi email ke wali kelas & ortu saat pelanggaran dicatat (ditunda ke Fase 4+)
 
-### Fase 4 — Layanan BK
-- [ ] Konseling individual (dengan kerahasiaan)
-- [ ] Konseling kelompok
-- [ ] Bimbingan klasikal (RPL BK)
-- [ ] Home visit + tanda tangan digital + PDF berita acara
-- [ ] Konferensi kasus + notulen + tanda tangan
-- [ ] Referral + PDF surat rujukan
+### Fase 4 — Layanan BK ✅ SELESAI (2026-04-22)
+- [x] Konseling individual (dengan kerahasiaan)
+- [x] Konseling kelompok
+- [x] Bimbingan klasikal (RPL BK)
+- [x] Home visit + tanda tangan digital + PDF berita acara
+- [x] Konferensi kasus + notulen + tanda tangan
+- [x] Referral + PDF surat rujukan
 
 ### Fase 5 — Instrumen
 - [ ] AKPD (angket online, hasil → rekomendasi program)
@@ -339,6 +340,7 @@ composer dev
 | 02 | Fase 1: Fondasi (scaffold, auth, RBAC, tema) | `doc/books/02-fondasi.md` |
 | 03 | Fase 2: Master Data (siswa, kelas, guru, ortu, penugasan) | `doc/books/03-master-data.md` |
 | 04 | Fase 3: Buku Kasus & Poin Pelanggaran | `doc/books/04-buku-kasus.md` |
+| 05 | Fase 4: Layanan BK | `doc/books/05-layanan-bk.md` |
 
 ### Aturan saat menyelesaikan fase
 Setelah menyelesaikan satu fase pengembangan, **wajib**:

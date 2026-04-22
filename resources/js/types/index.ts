@@ -124,6 +124,103 @@ export interface StudentViolation {
     academic_year?: AcademicYear;
 }
 
+export interface CounselingSession {
+    id: number;
+    type: 'individual' | 'group';
+    counselor_id: number;
+    academic_year_id: number;
+    date: string;
+    start_time: string | null;
+    duration_minutes: number | null;
+    topic: string;
+    description: string | null;
+    outcome: string | null;
+    next_plan: string | null;
+    status: 'dijadwalkan' | 'berlangsung' | 'selesai' | 'dibatalkan';
+    is_confidential: boolean;
+    created_at: string;
+    counselor?: User;
+    academic_year?: AcademicYear;
+    students?: Student[];
+    participants_count?: number;
+}
+
+export interface ClassicalGuidance {
+    id: number;
+    counselor_id: number;
+    class_id: number;
+    academic_year_id: number;
+    date: string;
+    topic: string;
+    description: string | null;
+    method: string | null;
+    evaluation: string | null;
+    duration_minutes: number | null;
+    created_at: string;
+    counselor?: User;
+    school_class?: SchoolClass;
+    academic_year?: AcademicYear;
+}
+
+export interface HomeVisit {
+    id: number;
+    student_id: number;
+    counselor_id: number;
+    academic_year_id: number;
+    date: string;
+    purpose: string;
+    findings: string | null;
+    action_plan: string | null;
+    signature_student: string | null;
+    signature_parent: string | null;
+    signature_counselor: string | null;
+    status: 'dijadwalkan' | 'selesai';
+    created_at: string;
+    student?: Student;
+    counselor?: User;
+    academic_year?: AcademicYear;
+}
+
+export interface CaseConferenceParticipant {
+    name: string;
+    role: string;
+}
+
+export interface CaseConference {
+    id: number;
+    case_id: number | null;
+    counselor_id: number;
+    academic_year_id: number;
+    date: string;
+    topic: string;
+    participants: CaseConferenceParticipant[] | null;
+    notes: string | null;
+    outcome: string | null;
+    status: 'dijadwalkan' | 'selesai';
+    created_at: string;
+    case_record?: CaseRecord;
+    counselor?: User;
+    academic_year?: AcademicYear;
+}
+
+export interface Referral {
+    id: number;
+    student_id: number;
+    case_id: number | null;
+    counselor_id: number;
+    academic_year_id: number;
+    referred_to: string;
+    reason: string;
+    date: string;
+    notes: string | null;
+    status: 'aktif' | 'diterima' | 'ditolak' | 'selesai';
+    created_at: string;
+    student?: Student;
+    case_record?: CaseRecord;
+    counselor?: User;
+    academic_year?: AcademicYear;
+}
+
 export interface PaginatedData<T> {
     data: T[];
     current_page: number;

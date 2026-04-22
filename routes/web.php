@@ -14,6 +14,8 @@ use App\Http\Controllers\GuardianController;
 use App\Http\Controllers\HomeVisitController;
 use App\Http\Controllers\IndividualCounselingController;
 use App\Http\Controllers\ReferralController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\RplBkController;
 use App\Http\Controllers\SociometryController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentGuidanceController;
@@ -294,5 +296,31 @@ Route::middleware(['auth'])->group(function () {
     });
     Route::middleware('module:instrument_career,write')->group(function () {
         Route::post('instruments/career/{student}/submit', [CareerController::class, 'submit'])->name('career.submit');
+    });
+
+    /*
+    |----------------------------------------------------------------------
+    | Fase 6 — Program BK & Laporan
+    |----------------------------------------------------------------------
+    */
+
+    // RPL BK
+    Route::middleware('module:program_rpl,read')->group(function () {
+        Route::get('programs/rpl', [RplBkController::class, 'index'])->name('rpl.index');
+    });
+    Route::middleware('module:program_rpl,write')->group(function () {
+        Route::post('programs/rpl', [RplBkController::class, 'store'])->name('rpl.store');
+        Route::put('programs/rpl/{rpl}', [RplBkController::class, 'update'])->name('rpl.update');
+        Route::delete('programs/rpl/{rpl}', [RplBkController::class, 'destroy'])->name('rpl.destroy');
+    });
+    Route::middleware('module:program_rpl,read')->group(function () {
+        Route::get('programs/rpl/{rpl}', [RplBkController::class, 'show'])->name('rpl.show');
+        Route::get('programs/rpl/{rpl}/pdf', [RplBkController::class, 'pdf'])->name('rpl.pdf');
+    });
+
+    // Laporan
+    Route::middleware('module:reports,read')->group(function () {
+        Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
+        Route::get('reports/monthly-pdf', [ReportController::class, 'monthlyPdf'])->name('reports.monthly-pdf');
     });
 });

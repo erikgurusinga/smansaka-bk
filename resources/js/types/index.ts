@@ -285,6 +285,26 @@ export interface CareerAssessment {
     academic_year?: AcademicYear;
 }
 
+export interface RplBk {
+    id: number;
+    counselor_id: number;
+    academic_year_id: number;
+    title: string;
+    bidang: 'pribadi' | 'sosial' | 'belajar' | 'karier';
+    service_type: 'klasikal' | 'kelompok' | 'individual' | 'konsultasi';
+    class_level: 'X' | 'XI' | 'XII' | 'semua';
+    duration_minutes: number;
+    objective: string;
+    method: string | null;
+    materials: string | null;
+    activities: string | null;
+    evaluation: string | null;
+    semester: 'ganjil' | 'genap';
+    created_at: string;
+    counselor?: User;
+    academic_year?: AcademicYear;
+}
+
 export interface PaginatedData<T> {
     data: T[];
     current_page: number;

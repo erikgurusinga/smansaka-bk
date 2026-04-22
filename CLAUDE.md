@@ -33,8 +33,9 @@ administrasi BK di SMA. Satu ekosistem visual & teknis dengan `smansaka-inventar
 
 - ✅ **Fase 1 — Fondasi** SELESAI (2026-04-22). Aplikasi siap login & dashboard.
 - ✅ **Fase 2 — Master Data** SELESAI (2026-04-22). CRUD siswa, kelas, guru, ortu, penugasan siswa asuh, import Excel.
-- ⏳ Fase 3–6 belum dikerjakan.
-- Dokumentasi lengkap ada di `doc/books/` (Buku 1 rancangan, Buku 2 Fase 1, Buku 3 Fase 2).
+- ✅ **Fase 3 — Buku Kasus & Pelanggaran** SELESAI (2026-04-22). Buku kasus (5 kategori, workflow, kerahasiaan), jenis pelanggaran + poin, catatan pelanggaran siswa + SP1/SP2/SP3.
+- ⏳ Fase 4–6 belum dikerjakan.
+- Dokumentasi lengkap ada di `doc/books/` (Buku 1–4).
 
 ## Warna & Tema (konsisten dengan smansaka-inventaris)
 
@@ -296,11 +297,11 @@ composer dev
 - [x] Penugasan siswa asuh per guru BK (tabel `student_guidance`)
 - [x] Foto siswa via Media Library (collection `photo`)
 
-### Fase 3 — Buku Kasus & Pelanggaran
-- [ ] CRUD kasus + workflow (baru → penanganan → selesai → rujukan)
-- [ ] Master data jenis pelanggaran + poin
-- [ ] Akumulasi poin + escalation (SP1/SP2/SP3)
-- [ ] Notifikasi email ke wali kelas & ortu saat pelanggaran dicatat
+### Fase 3 — Buku Kasus & Pelanggaran ✅ SELESAI (2026-04-22)
+- [x] CRUD kasus + workflow (baru → penanganan → selesai → rujukan)
+- [x] Master data jenis pelanggaran + poin (21 default violations seeded)
+- [x] Akumulasi poin + escalation (SP1/SP2/SP3)
+- [ ] Notifikasi email ke wali kelas & ortu saat pelanggaran dicatat (ditunda ke Fase 4+)
 
 ### Fase 4 — Layanan BK
 - [ ] Konseling individual (dengan kerahasiaan)
@@ -336,6 +337,8 @@ composer dev
 |----|-------|------|
 | 01 | Rancangan Aplikasi & Stack Teknologi | `doc/books/01-rancangan-dan-teknologi.md` |
 | 02 | Fase 1: Fondasi (scaffold, auth, RBAC, tema) | `doc/books/02-fondasi.md` |
+| 03 | Fase 2: Master Data (siswa, kelas, guru, ortu, penugasan) | `doc/books/03-master-data.md` |
+| 04 | Fase 3: Buku Kasus & Poin Pelanggaran | `doc/books/04-buku-kasus.md` |
 
 ### Aturan saat menyelesaikan fase
 Setelah menyelesaikan satu fase pengembangan, **wajib**:

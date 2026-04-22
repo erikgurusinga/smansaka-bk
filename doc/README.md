@@ -42,7 +42,8 @@ doc/
     ├── 04-buku-kasus.md                ← Buku Keempat: Fase 3 Buku Kasus & Pelanggaran
     ├── 05-layanan-bk.md                ← Buku Kelima: Fase 4 Layanan BK
     ├── 06-instrumen-bk.md              ← Buku Keenam: Fase 5 Instrumen BK
-    └── 07-program-dan-laporan.md       ← Buku Ketujuh: Fase 6 Program BK & Laporan
+    ├── 07-program-dan-laporan.md       ← Buku Ketujuh: Fase 6 Program BK & Laporan (core)
+    └── 08-laporan-dan-program.md       ← Buku Kedelapan: Fase 6 Lanjutan
 ```
 
 ## Daftar Buku
@@ -55,7 +56,8 @@ doc/
 | 04 | Fase 3 — Buku Kasus & Poin Pelanggaran | [books/04-buku-kasus.md](books/04-buku-kasus.md) |
 | 05 | Fase 4 — Layanan BK (konseling, home visit, konferensi, referral) | [books/05-layanan-bk.md](books/05-layanan-bk.md) |
 | 06 | Fase 5 — Instrumen BK (AKPD, DCM, Sosiometri, RIASEC) | [books/06-instrumen-bk.md](books/06-instrumen-bk.md) |
-| 07 | Fase 6 — Program BK, Laporan & Dashboard Analitik | [books/07-program-dan-laporan.md](books/07-program-dan-laporan.md) |
+| 07 | Fase 6 — Program BK, Laporan & Dashboard Analitik (core) | [books/07-program-dan-laporan.md](books/07-program-dan-laporan.md) |
+| 08 | Fase 6 Lanjutan — Laporan Semester/Tahunan + Excel + Program Tahunan/Semesteran | [books/08-laporan-dan-program.md](books/08-laporan-dan-program.md) |
 
 ## Catatan
 

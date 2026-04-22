@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dokumentasi — BK SMANSAKA</title>
+
+    <link rel="preconnect" href="https://fonts.bunny.net" />
+    <link
+        href="https://fonts.bunny.net/css?family=inter:400,500,600,700&family=jetbrains-mono:400,500"
+        rel="stylesheet"
+    />
+
+    <link rel="stylesheet" href="assets/style.css" />
+    <link rel="stylesheet" href="assets/print.css" media="print" />
+
+    <!-- marked.js: render Markdown → HTML (pin v4 — API (code,lang) & (text,level,raw)) -->
+    <script src="https://cdn.jsdelivr.net/npm/marked@4/marked.min.js"></script>
+    <!-- highlight.js: syntax highlighting -->
+    <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/styles/github-dark.min.css"
+    />
+    <script src="https://cdn.jsdelivr.net/gh/highlightjs/cdn-release@11.9.0/build/highlight.min.js"></script>
+    <!-- mermaid: diagram -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({
+            startOnLoad: false,
+            theme: 'default',
+            themeVariables: {
+                primaryColor: '#d5f4f7',
+                primaryTextColor: '#19414b',
+                primaryBorderColor: '#117481',
+                lineColor: '#596e72',
+                secondaryColor: '#faf0d0',
+                tertiaryColor: '#f6f8f8',
+                fontFamily: 'Inter, sans-serif',
+            },
+        });
+        window.mermaid = mermaid;
+    </script>
+</head>
+<body>
+    <div class="app">
+        <!-- ================ SIDEBAR ================ -->
+        <aside class="sidebar">
+            <div class="brand">
+                <h1>Dokumentasi BK</h1>
+                <p>SMA Negeri 1 Kabanjahe</p>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>Daftar Buku</h3>
+                <ul class="nav-list" id="book-list">
+                    <!-- Diisi oleh JS -->
+                </ul>
+            </div>
+
+            <div class="sidebar-section" id="toc-section" style="display: none">
+                <h3>Daftar Isi Buku</h3>
+                <ul class="nav-list" id="toc-list"></ul>
+            </div>
+        </aside>
+
+        <!-- ================ MAIN ================ -->
+        <main class="main">
+            <div class="topbar">
+                <div class="crumbs" id="crumbs">Beranda</div>
+                <div class="actions">
+                    <button class="btn" id="btn-home" title="Kembali ke beranda">
+                        Beranda
+                    </button>
+                    <button class="btn btn-primary" id="btn-print" title="Cetak / Simpan PDF">
+                        🖨️ Cetak PDF
+                    </button>
+                </div>
+            </div>
+
+            <div class="content" id="content">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // ================ DAFTAR BUKU ================
+        // Daftar buku — tambah entri baru di sini jika ada file .md baru
+        const BOOKS = [
+            {
+                id: '01',
+                file: 'books/01-rancangan-dan-teknologi.md',
+                title: 'Rancangan & Teknologi',
+                subtitle: 'Buku Pertama',
+            },
+            {
+                id: '02',
+                file: 'books/02-fondasi.md',
+                title: 'Fase 1: Fondasi',
+                subtitle: 'Buku Kedua',
+            },
+        ];
+
+        // ================ STATE ================
+        const state = {
+            currentBook: null,
+        };
+
+        // ================ ELEMENTS ================
+        const elBookList = document.getElementById('book-list');
+        const elTocSection = document.getElementById('toc-section');
+        const elTocList = document.getElementById('toc-list');
+        const elContent = document.getElementById('content');
+        const elCrumbs = document.getElementById('crumbs');
+        const elBtnHome = document.getElementById('btn-home');
+        const elBtnPrint = document.getElementById('btn-print');
+
+        // ================ RENDER SIDEBAR ================
+        function renderBookList() {
+            elBookList.innerHTML = BOOKS.map(
+                (b) => `
+                    <li>
+                        <a href="#${b.id}" data-book="${b.id}">
+                            ${b.id}. ${b.title}
+                        </a>
+                    </li>`
+            ).join('');
+        }
+
+        // ================ RENDER HOMEPAGE ================
+        function renderHome() {
+            state.currentBook = null;
+            elCrumbs.textContent = 'Beranda';
+            elTocSection.style.display = 'none';
+            document
+                .querySelectorAll('#book-list a')
+                .forEach((a) => a.classList.remove('active'));
+
+            elContent.innerHTML = `
+                <div class="book-cover">
+                    <h1>Dokumentasi</h1>
+                    <p>Aplikasi Bimbingan & Konseling SMANSAKA</p>
+                </div>
+
+                <h2>Selamat datang</h2>
+                <p>
+                    Folder ini menampung semua dokumentasi yang kita susun untuk aplikasi
+                    <strong>smansaka-bk</strong>. Setiap tahap pengembangan penting
+                    (rancangan, keputusan teknis, panduan pemakaian, laporan)
+                    akan disimpan di sini sebagai <strong>buku</strong> yang mudah
+                    dipelajari dan dicetak menjadi PDF.
+                </p>
+
+                <div class="toc-card">
+                    <h3 style="margin-top: 0">📚 Daftar Buku</h3>
+                    <ol>
+                        ${BOOKS.map(
+                            (b) => `
+                            <li>
+                                <a href="#${b.id}" data-book="${b.id}">
+                                    <strong>${b.subtitle}</strong>: ${b.title}
+                                </a>
+                            </li>`
+                        ).join('')}
+                    </ol>
+                </div>
+
+                <h2>Cara Menggunakan</h2>
+                <ol>
+                    <li>Klik buku yang ingin dibaca di sidebar kiri atau di daftar di atas.</li>
+                    <li>Sidebar akan otomatis menampilkan <strong>daftar isi</strong> buku.</li>
+                    <li>Klik tombol <kbd>🖨️ Cetak PDF</kbd> di kanan atas untuk menyimpan buku sebagai PDF.</li>
+                    <li>Di dialog cetak browser, pilih <em>"Save as PDF"</em> sebagai printer.</li>
+                </ol>
+
+                <h2>Untuk pengembang</h2>
+                <p>
+                    Semua file sumber dalam format <code>.md</code> (Markdown) ada di
+                    folder <code>books/</code>. Untuk menambah buku baru:
+                </p>
+                <ol>
+                    <li>Buat file markdown di <code>books/NN-judul.md</code>.</li>
+                    <li>Tambahkan entrinya di array <code>BOOKS</code> pada <code>index.html</code>.</li>
+                    <li>Refresh browser — buku baru muncul di sidebar.</li>
+                </ol>
+
+                <blockquote>
+                    <p><strong>Tip:</strong> diagram memakai sintaks Mermaid. Blok kode dengan
+                    <code>\`\`\`mermaid</code> otomatis dirender sebagai gambar.</p>
+                </blockquote>
+            `;
+
+            attachInternalLinks();
+        }
+
+        // ================ LOAD & RENDER BOOK ================
+        async function loadBook(id) {
+            const book = BOOKS.find((b) => b.id === id);
+            if (!book) {
+                renderHome();
+                return;
+            }
+
+            state.currentBook = book;
+            elCrumbs.textContent = `Beranda › ${book.subtitle}: ${book.title}`;
+
+            // Mark active
+            document.querySelectorAll('#book-list a').forEach((a) => {
+                a.classList.toggle('active', a.dataset.book === id);
+            });
+
+            elContent.innerHTML = `<div class="loading"><div class="spinner"></div></div>`;
+
+            try {
+                const res = await fetch(book.file + '?_=' + Date.now());
+                if (!res.ok) throw new Error('File tidak ditemukan: ' + book.file);
+                const md = await res.text();
+                renderMarkdown(md);
+            } catch (err) {
+                elContent.innerHTML = `
+                    <h1>Gagal memuat buku</h1>
+                    <p>${err.message}</p>
+                    <p>Pastikan Anda membuka halaman ini melalui web server
+                    (misalnya Laragon: <code>http://localhost/smansaka-bk/doc/</code>),
+                    bukan langsung dari <code>file://</code>.</p>
+                `;
+            }
+        }
+
+        // ================ RENDER MARKDOWN ================
+        function renderMarkdown(md) {
+            // Konfigurasi marked
+            marked.setOptions({
+                gfm: true,
+                breaks: false,
+                headerIds: true,
+                mangle: false,
+            });
+
+            // Custom renderer: mermaid blok
+            const renderer = new marked.Renderer();
+            const origCode = renderer.code.bind(renderer);
+            renderer.code = (code, lang) => {
+                if (lang === 'mermaid') {
+                    return `<pre class="mermaid">${code}</pre>`;
+                }
+                return origCode(code, lang);
+            };
+
+            // Heading: inject id + simpan untuk TOC
+            const headings = [];
+            renderer.heading = (text, level, raw) => {
+                const id = slugify(raw);
+                if (level <= 4) {
+                    headings.push({ id, text: stripTags(text), level });
+                }
+                return `<h${level} id="${id}">${text}</h${level}>`;
+            };
+
+            const html = marked.parse(md, { renderer });
+            elContent.innerHTML = html;
+
+            // Render mermaid
+            if (window.mermaid) {
+                window.mermaid.run({ querySelector: '.mermaid' });
+            }
+
+            // Highlight code
+            elContent.querySelectorAll('pre code').forEach((block) => {
+                hljs.highlightElement(block);
+            });
+
+            // Build TOC
+            buildToc(headings);
+
+            // Attach intra-page links
+            attachInternalLinks();
+
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+
+        // ================ TOC ================
+        function buildToc(headings) {
+            if (!headings.length) {
+                elTocSection.style.display = 'none';
+                return;
+            }
+            elTocSection.style.display = '';
+            elTocList.innerHTML = headings
+                .filter((h) => h.level >= 2 && h.level <= 3)
+                .map(
+                    (h) =>
+                        `<li><a href="#${h.id}" class="toc-h${h.level}">${h.text}</a></li>`
+                )
+                .join('');
+        }
+
+        // ================ UTIL ================
+        function slugify(str) {
+            return String(str)
+                .toLowerCase()
+                .replace(/<[^>]*>/g, '')
+                .replace(/[^\w\s-]/g, '')
+                .trim()
+                .replace(/[\s_-]+/g, '-')
+                .replace(/^-+|-+$/g, '');
+        }
+
+        function stripTags(html) {
+            return html.replace(/<[^>]*>/g, '');
+        }
+
+        function attachInternalLinks() {
+            // Link ke buku (href dimulai dengan #NN)
+            elContent.querySelectorAll('a[data-book]').forEach((a) => {
+                a.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const id = a.dataset.book;
+                    location.hash = id;
+                });
+            });
+        }
+
+        // ================ ROUTER ================
+        function handleRoute() {
+            const hash = location.hash.replace(/^#/, '');
+            if (!hash) {
+                renderHome();
+                return;
+            }
+            // hash dimulai dengan id buku (01, 02, dst) optionally disambung anchor
+            const bookId = hash.split('/')[0];
+            loadBook(bookId);
+        }
+
+        // ================ EVENTS ================
+        window.addEventListener('hashchange', handleRoute);
+
+        document.addEventListener('click', (e) => {
+            const a = e.target.closest('a[data-book]');
+            if (a) {
+                e.preventDefault();
+                location.hash = a.dataset.book;
+            }
+        });
+
+        elBtnHome.addEventListener('click', () => {
+            location.hash = '';
+        });
+
+        elBtnPrint.addEventListener('click', () => {
+            window.print();
+        });
+
+        // ================ INIT ================
+        renderBookList();
+        handleRoute();
+    </script>
+</body>
+</html>

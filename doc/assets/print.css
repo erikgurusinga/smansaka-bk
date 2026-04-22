@@ -1,0 +1,156 @@
+/* ============================================================
+   Gaya untuk Cetak PDF
+   Dipakai saat tombol "Cetak PDF" ditekan (window.print)
+   ============================================================ */
+
+@media print {
+    @page {
+        size: A4;
+        margin: 2cm 1.8cm;
+    }
+
+    html, body {
+        background: white !important;
+        color: #111 !important;
+        font-size: 11pt;
+        line-height: 1.55;
+    }
+
+    .app {
+        display: block !important;
+    }
+
+    .sidebar,
+    .topbar,
+    .btn,
+    .no-print {
+        display: none !important;
+    }
+
+    .main {
+        display: block !important;
+    }
+
+    .content {
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .book-cover {
+        background: #117481 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        page-break-after: always;
+        box-shadow: none !important;
+    }
+
+    .content h1 {
+        page-break-before: auto;
+        page-break-after: avoid;
+        color: #117481 !important;
+        border-bottom: 2px solid #117481 !important;
+        padding-bottom: 6px;
+    }
+
+    .content h2 {
+        page-break-after: avoid;
+        color: #145f6b !important;
+        border-bottom: 1px solid #b0e8ef !important;
+    }
+
+    .content h3, .content h4 {
+        page-break-after: avoid;
+        color: #184d58 !important;
+    }
+
+    .content pre {
+        page-break-inside: avoid;
+        background: #f6f8f8 !important;
+        color: #333a3c !important;
+        border: 1px solid #e0e6e7 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .content pre code {
+        color: #333a3c !important;
+    }
+
+    .content code {
+        background: #f6f8f8 !important;
+        color: #117481 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .content blockquote {
+        background: #eefbfc !important;
+        border-left-color: #117481 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        page-break-inside: avoid;
+    }
+
+    .content table {
+        page-break-inside: avoid;
+        box-shadow: none !important;
+        border: 1px solid #e0e6e7 !important;
+    }
+
+    .content th {
+        background: #eefbfc !important;
+        color: #19414b !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .content tr {
+        page-break-inside: avoid;
+    }
+
+    .content a {
+        color: #117481 !important;
+        text-decoration: none !important;
+        border-bottom: none !important;
+    }
+
+    .content a[href^="http"]::after {
+        content: " (" attr(href) ")";
+        font-size: 9pt;
+        color: #596e72;
+    }
+
+    .mermaid {
+        page-break-inside: avoid;
+        background: white !important;
+        box-shadow: none !important;
+        border: 1px solid #e0e6e7 !important;
+    }
+
+    .content img {
+        max-width: 100%;
+        height: auto;
+        page-break-inside: avoid;
+    }
+
+    /* Header & footer per halaman */
+    @page :first {
+        @top-center { content: ""; }
+    }
+
+    @page {
+        @top-center {
+            content: "Aplikasi BK SMANSAKA — " string(chapter);
+            font-family: 'Inter', sans-serif;
+            font-size: 9pt;
+            color: #596e72;
+        }
+        @bottom-center {
+            content: "Halaman " counter(page) " dari " counter(pages);
+            font-family: 'Inter', sans-serif;
+            font-size: 9pt;
+            color: #596e72;
+        }
+    }
+}

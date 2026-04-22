@@ -305,6 +305,47 @@ export interface RplBk {
     academic_year?: AcademicYear;
 }
 
+export interface AnnualProgramItem {
+    bidang: 'pribadi' | 'sosial' | 'belajar' | 'karier';
+    priority: number;
+    focus: string;
+    target_count: number;
+    rpl_ids: number[];
+}
+
+export interface AnnualProgram {
+    id: number;
+    academic_year_id: number;
+    counselor_id: number;
+    title: string;
+    description: string | null;
+    status: 'draft' | 'active' | 'completed';
+    generation_source: 'manual' | 'akpd' | 'dcm';
+    items: AnnualProgramItem[];
+    created_at: string;
+    academic_year?: AcademicYear;
+    counselor?: User;
+}
+
+export interface SemesterScheduleItem {
+    month: number;
+    week: number;
+    rpl_id: number;
+    class_level: 'X' | 'XI' | 'XII' | 'semua';
+    notes: string | null;
+}
+
+export interface SemesterProgram {
+    id: number;
+    annual_program_id: number;
+    semester: 'ganjil' | 'genap';
+    title: string;
+    notes: string | null;
+    schedule: SemesterScheduleItem[];
+    created_at: string;
+    annual_program?: AnnualProgram;
+}
+
 export interface PaginatedData<T> {
     data: T[];
     current_page: number;

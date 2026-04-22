@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AkpdController;
+use App\Http\Controllers\AnnualProgramController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\CareerController;
 use App\Http\Controllers\CaseConferenceController;
@@ -16,6 +17,7 @@ use App\Http\Controllers\IndividualCounselingController;
 use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RplBkController;
+use App\Http\Controllers\SemesterProgramController;
 use App\Http\Controllers\SociometryController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentGuidanceController;
@@ -318,9 +320,38 @@ Route::middleware(['auth'])->group(function () {
         Route::get('programs/rpl/{rpl}/pdf', [RplBkController::class, 'pdf'])->name('rpl.pdf');
     });
 
+    // Program Tahunan
+    Route::middleware('module:program_annual,read')->group(function () {
+        Route::get('programs/annual', [AnnualProgramController::class, 'index'])->name('annual.index');
+    });
+    Route::middleware('module:program_annual,write')->group(function () {
+        Route::get('programs/annual/create', [AnnualProgramController::class, 'create'])->name('annual.create');
+        Route::post('programs/annual', [AnnualProgramController::class, 'store'])->name('annual.store');
+        Route::get('programs/annual/{annual}/edit', [AnnualProgramController::class, 'edit'])->name('annual.edit');
+        Route::put('programs/annual/{annual}', [AnnualProgramController::class, 'update'])->name('annual.update');
+        Route::delete('programs/annual/{annual}', [AnnualProgramController::class, 'destroy'])->name('annual.destroy');
+    });
+    Route::middleware('module:program_annual,read')->group(function () {
+        Route::get('programs/annual/{annual}', [AnnualProgramController::class, 'show'])->name('annual.show');
+    });
+
+    // Program Semesteran
+    Route::middleware('module:program_semester,read')->group(function () {
+        Route::get('programs/semester', [SemesterProgramController::class, 'index'])->name('semester.index');
+    });
+    Route::middleware('module:program_semester,write')->group(function () {
+        Route::get('programs/semester/create', [SemesterProgramController::class, 'create'])->name('semester.create');
+        Route::post('programs/semester', [SemesterProgramController::class, 'store'])->name('semester.store');
+        Route::delete('programs/semester/{semester}', [SemesterProgramController::class, 'destroy'])->name('semester.destroy');
+    });
+    Route::middleware('module:program_semester,read')->group(function () {
+        Route::get('programs/semester/{semester}', [SemesterProgramController::class, 'show'])->name('semester.show');
+    });
+
     // Laporan
     Route::middleware('module:reports,read')->group(function () {
         Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
-        Route::get('reports/monthly-pdf', [ReportController::class, 'monthlyPdf'])->name('reports.monthly-pdf');
+        Route::get('reports/pdf', [ReportController::class, 'pdf'])->name('reports.pdf');
+        Route::get('reports/excel', [ReportController::class, 'excel'])->name('reports.excel');
     });
 });

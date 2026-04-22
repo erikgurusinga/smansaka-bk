@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\MonthlyReportExport;
 use App\Models\AcademicYear;
 use App\Models\CaseRecord;
 use App\Models\ClassicalGuidance;
@@ -14,6 +15,8 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Maatwebsite\Excel\Facades\Excel;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response as SymfonyResponse;
 
 class ReportController extends Controller
@@ -23,41 +26,112 @@ class ReportController extends Controller
         $activeYear = AcademicYear::where('is_active', true)->first();
         $now = Carbon::now();
 
-        // Default: bulan berjalan
-        $month = (int) $request->input('month', $now->month);
+        $type = $request->input('type', 'monthly');
         $year = (int) $request->input('year', $now->year);
+        $month = (int) $request->input('month', $now->month);
+        $semester = $request->input('semester', $now->month >= 7 ? 'ganjil' : 'genap');
 
-        $start = Carbon::create($year, $month, 1)->startOfMonth();
-        $end = $start->copy()->endOfMonth();
+        [$start, $end, $label] = $this->resolveRange($type, $year, $month, $semester);
 
         $summary = $this->collectSummary($start, $end);
 
         return Inertia::render('Reports/Index', [
             'summary' => $summary,
-            'month' => $month,
+            'type' => $type,
             'year' => $year,
+            'month' => $month,
+            'semester' => $semester,
+            'period_label' => $label,
             'active_year' => $activeYear,
         ]);
     }
 
-    public function monthlyPdf(Request $request): SymfonyResponse
+    public function pdf(Request $request): SymfonyResponse
     {
-        $month = (int) $request->input('month', Carbon::now()->month);
+        $type = $request->input('type', 'monthly');
         $year = (int) $request->input('year', Carbon::now()->year);
+        $month = (int) $request->input('month', Carbon::now()->month);
+        $semester = $request->input('semester', Carbon::now()->month >= 7 ? 'ganjil' : 'genap');
 
-        $start = Carbon::create($year, $month, 1)->startOfMonth();
-        $end = $start->copy()->endOfMonth();
+        [$start, $end, $label] = $this->resolveRange($type, $year, $month, $semester);
 
         $summary = $this->collectSummary($start, $end);
         $details = $this->collectDetails($start, $end);
 
-        return PdfService::inline('pdf.report-monthly', [
+        $filename = match ($type) {
+            'semester' => 'laporan-semester-'.$semester.'-'.$year,
+            'yearly' => 'laporan-tahunan-'.$year,
+            default => 'laporan-bulanan-'.$start->format('Y-m'),
+        };
+
+        return PdfService::inline('pdf.report-period', [
             'summary' => $summary,
             'details' => $details,
             'start' => $start,
             'end' => $end,
+            'period_label' => $label,
+            'type' => $type,
             'academic_year' => AcademicYear::where('is_active', true)->first(),
-        ], 'laporan-bulanan-'.$start->format('Y-m'));
+        ], $filename);
+    }
+
+    public function excel(Request $request): BinaryFileResponse
+    {
+        $type = $request->input('type', 'monthly');
+        $year = (int) $request->input('year', Carbon::now()->year);
+        $month = (int) $request->input('month', Carbon::now()->month);
+        $semester = $request->input('semester', Carbon::now()->month >= 7 ? 'ganjil' : 'genap');
+
+        [$start, $end, $label] = $this->resolveRange($type, $year, $month, $semester);
+
+        $filename = match ($type) {
+            'semester' => 'laporan-semester-'.$semester.'-'.$year.'.xlsx',
+            'yearly' => 'laporan-tahunan-'.$year.'.xlsx',
+            default => 'laporan-bulanan-'.$start->format('Y-m').'.xlsx',
+        };
+
+        $summary = $this->collectSummary($start, $end);
+        $details = $this->collectDetails($start, $end);
+
+        return Excel::download(
+            new MonthlyReportExport($summary, $details, $start, $end, $label),
+            $filename,
+        );
+    }
+
+    /**
+     * @return array{0: Carbon, 1: Carbon, 2: string}
+     */
+    private function resolveRange(string $type, int $year, int $month, string $semester): array
+    {
+        if ($type === 'yearly') {
+            $start = Carbon::create($year, 1, 1)->startOfDay();
+            $end = Carbon::create($year, 12, 31)->endOfDay();
+            $label = "Tahun $year";
+
+            return [$start, $end, $label];
+        }
+
+        if ($type === 'semester') {
+            if ($semester === 'ganjil') {
+                $start = Carbon::create($year, 7, 1)->startOfDay();
+                $end = Carbon::create($year, 12, 31)->endOfDay();
+                $label = "Semester Ganjil TA $year/".($year + 1);
+            } else {
+                $start = Carbon::create($year, 1, 1)->startOfDay();
+                $end = Carbon::create($year, 6, 30)->endOfDay();
+                $label = 'Semester Genap TA '.($year - 1)."/$year";
+            }
+
+            return [$start, $end, $label];
+        }
+
+        // monthly
+        $start = Carbon::create($year, $month, 1)->startOfMonth();
+        $end = $start->copy()->endOfMonth();
+        $label = $start->translatedFormat('F Y');
+
+        return [$start, $end, $label];
     }
 
     private function collectSummary(Carbon $start, Carbon $end): array

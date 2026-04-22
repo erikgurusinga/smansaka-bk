@@ -1,5 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { FileText, Download } from 'lucide-react';
+import { FileText, FileSpreadsheet, Calendar, CalendarDays, Calendar1 } from 'lucide-react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/Components/ui/Button';
 import { Select } from '@/Components/ui/Select';
@@ -20,8 +20,11 @@ interface Summary {
 
 interface Props extends PageProps {
     summary: Summary;
+    type: 'monthly' | 'semester' | 'yearly';
     month: number;
     year: number;
+    semester: 'ganjil' | 'genap';
+    period_label: string;
     active_year: AcademicYear | null;
 }
 
@@ -40,18 +43,38 @@ const MONTHS = [
     'Desember',
 ];
 
-export default function ReportsIndex() {
-    const { summary, month, year, active_year } = usePage<Props>().props;
+const TABS: Array<{
+    key: 'monthly' | 'semester' | 'yearly';
+    label: string;
+    icon: React.ReactNode;
+}> = [
+    { key: 'monthly', label: 'Bulanan', icon: <Calendar className="h-4 w-4" /> },
+    { key: 'semester', label: 'Semester', icon: <Calendar1 className="h-4 w-4" /> },
+    { key: 'yearly', label: 'Tahunan', icon: <CalendarDays className="h-4 w-4" /> },
+];
 
-    const handleChange = (key: 'month' | 'year', value: string) => {
+export default function ReportsIndex() {
+    const { summary, type, month, year, semester, period_label, active_year } =
+        usePage<Props>().props;
+
+    const navigate = (next: Partial<Pick<Props, 'type' | 'month' | 'year' | 'semester'>>) => {
         router.get(
             route('reports.index'),
-            { month: key === 'month' ? value : month, year: key === 'year' ? value : year },
+            { type, month, year, semester, ...next },
             { preserveState: false },
         );
     };
 
-    const pdfUrl = `${route('reports.monthly-pdf')}?month=${month}&year=${year}`;
+    const buildUrl = (action: 'pdf' | 'excel') => {
+        const base = route(action === 'pdf' ? 'reports.pdf' : 'reports.excel');
+        const params = new URLSearchParams({
+            type,
+            month: String(month),
+            year: String(year),
+            semester,
+        });
+        return `${base}?${params.toString()}`;
+    };
 
     const yearOptions = [];
     const nowYear = new Date().getFullYear();
@@ -64,53 +87,91 @@ export default function ReportsIndex() {
             <Head title="Laporan BK" />
 
             <div className="space-y-5">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-xl font-semibold text-neutral-900">Laporan BK</h1>
-                        <p className="mt-0.5 text-sm text-neutral-500">
-                            Rekap bulanan layanan BK SMA Negeri 1 Kabanjahe
-                            {active_year
-                                ? ` · TA ${active_year.year} ${active_year.semester === 'ganjil' ? 'Ganjil' : 'Genap'}`
-                                : ''}
-                        </p>
-                    </div>
+                <div>
+                    <h1 className="text-xl font-semibold text-neutral-900">Laporan BK</h1>
+                    <p className="mt-0.5 text-sm text-neutral-500">
+                        Rekap layanan BK SMA Negeri 1 Kabanjahe
+                        {active_year
+                            ? ` · TA ${active_year.year} ${active_year.semester === 'ganjil' ? 'Ganjil' : 'Genap'}`
+                            : ''}
+                    </p>
+                </div>
+
+                <div className="flex gap-1 rounded-2xl bg-neutral-100 p-1">
+                    {TABS.map((tab) => (
+                        <button
+                            key={tab.key}
+                            onClick={() => navigate({ type: tab.key })}
+                            className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition ${
+                                type === tab.key
+                                    ? 'text-primary-700 bg-white shadow-sm'
+                                    : 'text-neutral-500 hover:text-neutral-800'
+                            }`}
+                        >
+                            {tab.icon}
+                            {tab.label}
+                        </button>
+                    ))}
                 </div>
 
                 <div className="flex flex-wrap items-end gap-3 rounded-2xl bg-white p-4 shadow-sm ring-1 ring-neutral-100">
-                    <div className="w-44 space-y-1.5">
-                        <Label>Bulan</Label>
-                        <Select
-                            value={String(month)}
-                            onValueChange={(v) => handleChange('month', v)}
-                            options={MONTHS.map((m, i) => ({
-                                value: String(i + 1),
-                                label: m,
-                            }))}
-                        />
-                    </div>
+                    {type === 'monthly' && (
+                        <div className="w-44 space-y-1.5">
+                            <Label>Bulan</Label>
+                            <Select
+                                value={String(month)}
+                                onValueChange={(v) => navigate({ month: Number(v) })}
+                                options={MONTHS.map((m, i) => ({
+                                    value: String(i + 1),
+                                    label: m,
+                                }))}
+                            />
+                        </div>
+                    )}
+                    {type === 'semester' && (
+                        <div className="w-44 space-y-1.5">
+                            <Label>Semester</Label>
+                            <Select
+                                value={semester}
+                                onValueChange={(v) =>
+                                    navigate({ semester: v as 'ganjil' | 'genap' })
+                                }
+                                options={[
+                                    { value: 'ganjil', label: 'Ganjil (Jul–Des)' },
+                                    { value: 'genap', label: 'Genap (Jan–Jun)' },
+                                ]}
+                            />
+                        </div>
+                    )}
                     <div className="w-32 space-y-1.5">
                         <Label>Tahun</Label>
                         <Select
                             value={String(year)}
-                            onValueChange={(v) => handleChange('year', v)}
+                            onValueChange={(v) => navigate({ year: Number(v) })}
                             options={yearOptions}
                         />
                     </div>
-                    <a href={pdfUrl} target="_blank" rel="noopener noreferrer">
-                        <Button variant="secondary" className="gap-1.5">
-                            <Download className="h-4 w-4" />
-                            Unduh PDF Rekap
-                        </Button>
-                    </a>
+                    <div className="flex gap-2">
+                        <a href={buildUrl('pdf')} target="_blank" rel="noopener noreferrer">
+                            <Button variant="secondary" className="gap-1.5">
+                                <FileText className="h-4 w-4" />
+                                Unduh PDF
+                            </Button>
+                        </a>
+                        <a href={buildUrl('excel')}>
+                            <Button variant="secondary" className="gap-1.5 text-emerald-700">
+                                <FileSpreadsheet className="h-4 w-4" />
+                                Unduh Excel
+                            </Button>
+                        </a>
+                    </div>
                 </div>
 
                 <div className="from-primary-600 to-primary-800 rounded-2xl bg-gradient-to-br p-5 text-white shadow-md">
-                    <div className="flex items-center gap-2">
-                        <FileText className="h-5 w-5" />
-                        <h2 className="text-primary-50 text-sm font-semibold tracking-wide uppercase">
-                            Rekap {MONTHS[month - 1]} {year}
-                        </h2>
-                    </div>
+                    <p className="text-primary-100 text-xs font-semibold tracking-wide uppercase">
+                        Periode
+                    </p>
+                    <p className="mt-1 text-2xl font-bold">{period_label}</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

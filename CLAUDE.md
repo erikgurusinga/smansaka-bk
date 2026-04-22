@@ -36,7 +36,7 @@ administrasi BK di SMA. Satu ekosistem visual & teknis dengan `smansaka-inventar
 - ✅ **Fase 3 — Buku Kasus & Pelanggaran** SELESAI (2026-04-22). Buku kasus (5 kategori, workflow, kerahasiaan), jenis pelanggaran + poin, catatan pelanggaran siswa + SP1/SP2/SP3.
 - ✅ **Fase 4 — Layanan BK** SELESAI (2026-04-22). Konseling individual & kelompok, bimbingan klasikal, home visit (tanda tangan digital + PDF berita acara), konferensi kasus, referral + PDF surat rujukan.
 - ✅ **Fase 5 — Instrumen BK** SELESAI (2026-04-23). AKPD (50 butir, 4 bidang), DCM (240 butir, 12 topik), Sosiometri (SVG sociogram circular), RIASEC (48 butir, kode Holland + rekomendasi jurusan).
-- ⏳ Fase 6 belum dikerjakan.
+- 🟡 **Fase 6 — Program & Laporan** CORE SELESAI (2026-04-23). Dashboard analitik (Recharts: tren 6 bulan, kelas rawan, AKPD bidang, status kasus), RPL BK (CRUD + PDF), Laporan bulanan (filter bulan/tahun + PDF rekap 9 seksi). **Ditunda**: Program Tahunan generator, Program Semesteran, notifikasi email, portal siswa/ortu, API Sanctum.
 - Dokumentasi lengkap ada di `doc/books/` (Buku 1–4).
 
 ## Warna & Tema (konsisten dengan smansaka-inventaris)
@@ -319,13 +319,16 @@ composer dev
 - [x] Sosiometri (SVG sociogram circular, multi kriteria, positive/negative polarity)
 - [x] Inventori Minat Bakat / Karier (RIASEC 48 butir, kode Holland 3-huruf + rekomendasi jurusan)
 
-### Fase 6 — Program, Laporan, Portal
-- [ ] RPL BK, Program Tahunan, Program Semesteran
-- [ ] Laporan bulanan/semester/tahunan (PDF/Excel)
-- [ ] Dashboard analitik (Recharts: tren kasus, kelas rawan, jenis masalah dominan)
-- [ ] Notifikasi email (panggilan ortu, undangan konferensi)
-- [ ] Portal siswa & orang tua (opsional — bisa digabung ke aplikasi lain)
-- [ ] API Sanctum untuk integrasi dengan sismansaka
+### Fase 6 — Program, Laporan, Portal 🟡 CORE SELESAI (2026-04-23)
+- [x] RPL BK (CRUD + PDF via Dialog modal + filter 5 dimensi)
+- [ ] Program Tahunan (generator dari AKPD/DCM) — ditunda ke iterasi lanjutan
+- [ ] Program Semesteran (turunan tahunan) — ditunda
+- [x] Laporan bulanan (filter bulan/tahun + PDF rekap 9 seksi tabel)
+- [ ] Laporan semester/tahunan (PDF/Excel) — ditunda
+- [x] Dashboard analitik (Recharts: 6 StatCard + LineChart tren 6 bulan + PieChart status kasus + BarChart kelas rawan & AKPD bidang)
+- [ ] Notifikasi email (panggilan ortu, undangan konferensi) — butuh SMTP
+- [ ] Portal siswa & orang tua — butuh guard auth terpisah
+- [ ] API Sanctum untuk integrasi dengan sismansaka — ditunda
 
 ## Folder Dokumentasi
 
@@ -343,6 +346,7 @@ composer dev
 | 04 | Fase 3: Buku Kasus & Poin Pelanggaran | `doc/books/04-buku-kasus.md` |
 | 05 | Fase 4: Layanan BK | `doc/books/05-layanan-bk.md` |
 | 06 | Fase 5: Instrumen BK | `doc/books/06-instrumen-bk.md` |
+| 07 | Fase 6: Program BK & Laporan | `doc/books/07-program-dan-laporan.md` |
 
 ### Aturan saat menyelesaikan fase
 Setelah menyelesaikan satu fase pengembangan, **wajib**:

@@ -1,12 +1,15 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\CaseController;
 use App\Http\Controllers\ClassController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GuardianController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\StudentGuidanceController;
+use App\Http\Controllers\StudentViolationController;
 use App\Http\Controllers\TeacherController;
+use App\Http\Controllers\ViolationController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -95,5 +98,42 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware('module:students,write')->group(function () {
         Route::post('student-guidance', [StudentGuidanceController::class, 'store'])->name('student-guidance.store');
         Route::delete('student-guidance', [StudentGuidanceController::class, 'destroy'])->name('student-guidance.destroy');
+    });
+
+    /*
+    |----------------------------------------------------------------------
+    | Fase 3 — Kasus & Pelanggaran
+    |----------------------------------------------------------------------
+    */
+    Route::middleware('module:cases,read')->group(function () {
+        Route::get('cases', [CaseController::class, 'index'])->name('cases.index');
+    });
+    Route::middleware('module:cases,write')->group(function () {
+        Route::get('cases/create', [CaseController::class, 'create'])->name('cases.create');
+        Route::post('cases', [CaseController::class, 'store'])->name('cases.store');
+        Route::get('cases/{case}/edit', [CaseController::class, 'edit'])->name('cases.edit');
+        Route::put('cases/{case}', [CaseController::class, 'update'])->name('cases.update');
+        Route::delete('cases/{case}', [CaseController::class, 'destroy'])->name('cases.destroy');
+    });
+    Route::middleware('module:cases,read')->group(function () {
+        Route::get('cases/{case}', [CaseController::class, 'show'])->name('cases.show');
+    });
+
+    Route::middleware('module:violations,read')->group(function () {
+        Route::get('violations', [ViolationController::class, 'index'])->name('violations.index');
+    });
+    Route::middleware('module:violations,write')->group(function () {
+        Route::post('violations', [ViolationController::class, 'store'])->name('violations.store');
+        Route::put('violations/{violation}', [ViolationController::class, 'update'])->name('violations.update');
+        Route::delete('violations/{violation}', [ViolationController::class, 'destroy'])->name('violations.destroy');
+    });
+
+    Route::middleware('module:violations,read')->group(function () {
+        Route::get('student-violations', [StudentViolationController::class, 'index'])->name('student-violations.index');
+    });
+    Route::middleware('module:violations,write')->group(function () {
+        Route::post('student-violations', [StudentViolationController::class, 'store'])->name('student-violations.store');
+        Route::put('student-violations/{studentViolation}', [StudentViolationController::class, 'update'])->name('student-violations.update');
+        Route::delete('student-violations/{studentViolation}', [StudentViolationController::class, 'destroy'])->name('student-violations.destroy');
     });
 });

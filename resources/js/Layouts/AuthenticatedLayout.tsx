@@ -128,6 +128,12 @@ const navigation: NavItem[] = [
             },
             {
                 label: 'Poin Pelanggaran',
+                href: '/student-violations',
+                icon: <ShieldAlert className="h-4 w-4" />,
+                permission: 'violations',
+            },
+            {
+                label: 'Jenis Pelanggaran',
                 href: '/violations',
                 icon: <ShieldAlert className="h-4 w-4" />,
                 permission: 'violations',

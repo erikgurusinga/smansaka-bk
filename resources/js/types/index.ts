@@ -79,6 +79,51 @@ export interface Guardian {
     students_count?: number;
 }
 
+export interface Violation {
+    id: number;
+    name: string;
+    category: 'ringan' | 'sedang' | 'berat';
+    points: number;
+    description: string | null;
+    is_active: boolean;
+    student_violations_count?: number;
+}
+
+export interface CaseRecord {
+    id: number;
+    student_id: number;
+    reported_by: number;
+    academic_year_id: number;
+    category: 'akademik' | 'pribadi' | 'sosial' | 'karier' | 'pelanggaran';
+    title: string;
+    description: string;
+    status: 'baru' | 'penanganan' | 'selesai' | 'rujukan';
+    is_confidential: boolean;
+    visible_to: number[] | null;
+    resolved_at: string | null;
+    created_at: string;
+    student?: Student;
+    reporter?: User;
+    academic_year?: AcademicYear;
+}
+
+export interface StudentViolation {
+    id: number;
+    student_id: number;
+    violation_id: number;
+    reported_by: number;
+    academic_year_id: number;
+    date: string;
+    description: string | null;
+    status: 'baru' | 'diproses' | 'selesai';
+    sp_level: 'SP1' | 'SP2' | 'SP3' | null;
+    notes: string | null;
+    student?: Student;
+    violation?: Violation;
+    reporter?: User;
+    academic_year?: AcademicYear;
+}
+
 export interface PaginatedData<T> {
     data: T[];
     current_page: number;

@@ -1,7 +1,12 @@
 <?php
 
 use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\ClassController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\GuardianController;
+use App\Http\Controllers\StudentController;
+use App\Http\Controllers\StudentGuidanceController;
+use App\Http\Controllers\TeacherController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -40,4 +45,55 @@ Route::middleware(['auth'])->group(function () {
 
     Route::get('profile', fn () => Inertia::render('Profile/Edit'))
         ->name('profile.edit');
+
+    /*
+    |----------------------------------------------------------------------
+    | Master Data
+    |----------------------------------------------------------------------
+    */
+    Route::middleware('module:classes,read')->group(function () {
+        Route::get('classes', [ClassController::class, 'index'])->name('classes.index');
+    });
+    Route::middleware('module:classes,write')->group(function () {
+        Route::post('classes', [ClassController::class, 'store'])->name('classes.store');
+        Route::put('classes/{class}', [ClassController::class, 'update'])->name('classes.update');
+        Route::delete('classes/{class}', [ClassController::class, 'destroy'])->name('classes.destroy');
+    });
+
+    Route::middleware('module:classes,read')->group(function () {
+        Route::get('teachers', [TeacherController::class, 'index'])->name('teachers.index');
+    });
+    Route::middleware('module:classes,write')->group(function () {
+        Route::post('teachers', [TeacherController::class, 'store'])->name('teachers.store');
+        Route::put('teachers/{teacher}', [TeacherController::class, 'update'])->name('teachers.update');
+        Route::delete('teachers/{teacher}', [TeacherController::class, 'destroy'])->name('teachers.destroy');
+    });
+
+    Route::middleware('module:students,read')->group(function () {
+        Route::get('students', [StudentController::class, 'index'])->name('students.index');
+    });
+    Route::middleware('module:students,write')->group(function () {
+        Route::post('students', [StudentController::class, 'store'])->name('students.store');
+        Route::put('students/{student}', [StudentController::class, 'update'])->name('students.update');
+        Route::delete('students/{student}', [StudentController::class, 'destroy'])->name('students.destroy');
+        Route::post('students/{student}/photo', [StudentController::class, 'updatePhoto'])->name('students.photo');
+        Route::post('students/import', [StudentController::class, 'import'])->name('students.import');
+    });
+
+    Route::middleware('module:parents,read')->group(function () {
+        Route::get('parents', [GuardianController::class, 'index'])->name('parents.index');
+    });
+    Route::middleware('module:parents,write')->group(function () {
+        Route::post('parents', [GuardianController::class, 'store'])->name('parents.store');
+        Route::put('parents/{parent}', [GuardianController::class, 'update'])->name('parents.update');
+        Route::delete('parents/{parent}', [GuardianController::class, 'destroy'])->name('parents.destroy');
+    });
+
+    Route::middleware('module:students,read')->group(function () {
+        Route::get('student-guidance', [StudentGuidanceController::class, 'index'])->name('student-guidance.index');
+    });
+    Route::middleware('module:students,write')->group(function () {
+        Route::post('student-guidance', [StudentGuidanceController::class, 'store'])->name('student-guidance.store');
+        Route::delete('student-guidance', [StudentGuidanceController::class, 'destroy'])->name('student-guidance.destroy');
+    });
 });

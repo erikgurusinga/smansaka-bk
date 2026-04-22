@@ -37,7 +37,8 @@ doc/
 │   └── print.css                   ← Gaya untuk cetak PDF
 └── books/
     ├── 01-rancangan-dan-teknologi.md   ← Buku Pertama: Rancangan & Teknologi
-    └── 02-fondasi.md                   ← Buku Kedua: Fase 1 Fondasi
+    ├── 02-fondasi.md                   ← Buku Kedua: Fase 1 Fondasi
+    └── 03-master-data.md               ← Buku Ketiga: Fase 2 Master Data
 ```
 
 ## Daftar Buku
@@ -46,6 +47,7 @@ doc/
 |----|-------|------|
 | 01 | Rancangan Aplikasi & Stack Teknologi | [books/01-rancangan-dan-teknologi.md](books/01-rancangan-dan-teknologi.md) |
 | 02 | Fase 1 — Fondasi (scaffold, auth, RBAC, tema) | [books/02-fondasi.md](books/02-fondasi.md) |
+| 03 | Fase 2 — Master Data (siswa, kelas, guru, ortu, penugasan) | [books/03-master-data.md](books/03-master-data.md) |
 
 ## Catatan
 

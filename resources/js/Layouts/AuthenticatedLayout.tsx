@@ -55,9 +55,21 @@ const navigation: NavItem[] = [
                 permission: 'students',
             },
             {
+                label: 'Penugasan Siswa',
+                href: '/student-guidance',
+                icon: <UserCog className="h-4 w-4" />,
+                permission: 'students',
+            },
+            {
                 label: 'Kelas & Wali',
                 href: '/classes',
                 icon: <UserCog className="h-4 w-4" />,
+                permission: 'classes',
+            },
+            {
+                label: 'Guru',
+                href: '/teachers',
+                icon: <Users2 className="h-4 w-4" />,
                 permission: 'classes',
             },
             {

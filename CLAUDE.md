@@ -32,8 +32,9 @@ administrasi BK di SMA. Satu ekosistem visual & teknis dengan `smansaka-inventar
 ## Status Pengembangan
 
 - ✅ **Fase 1 — Fondasi** SELESAI (2026-04-22). Aplikasi siap login & dashboard.
-- ⏳ Fase 2–6 belum dikerjakan.
-- Dokumentasi lengkap ada di `doc/books/` (Buku 1 rancangan, Buku 2 walkthrough Fase 1).
+- ✅ **Fase 2 — Master Data** SELESAI (2026-04-22). CRUD siswa, kelas, guru, ortu, penugasan siswa asuh, import Excel.
+- ⏳ Fase 3–6 belum dikerjakan.
+- Dokumentasi lengkap ada di `doc/books/` (Buku 1 rancangan, Buku 2 Fase 1, Buku 3 Fase 2).
 
 ## Warna & Tema (konsisten dengan smansaka-inventaris)
 
@@ -283,17 +284,17 @@ composer dev
 - [x] PWA manifest + service worker
 - [x] Dokumentasi: `doc/books/02-fondasi.md` (walkthrough 21 bab)
 
-### Fase 2 — Master Data
-**Quality gate (dikerjakan di awal fase):**
-- [ ] Laravel Pint (formatter PHP, konfigurasi PSR-12)
-- [ ] ESLint + Prettier (formatter & linter JS/TS/TSX)
-- [ ] Husky + lint-staged (pre-commit hook: Pint + Prettier + ESLint)
+### Fase 2 — Master Data ✅ SELESAI (2026-04-22)
+**Quality gate:**
+- [x] Laravel Pint (formatter PHP, konfigurasi PSR-12)
+- [x] ESLint + Prettier (formatter & linter JS/TS/TSX)
+- [x] Husky + lint-staged (pre-commit hook: Pint + Prettier + ESLint)
 
 **Modul:**
-- [ ] CRUD siswa (manual + import Excel)
-- [ ] CRUD kelas, wali kelas, orang tua, guru
-- [ ] Penugasan siswa asuh per guru BK
-- [ ] Foto siswa via Media Library
+- [x] CRUD siswa (manual + import Excel)
+- [x] CRUD kelas, wali kelas, orang tua, guru
+- [x] Penugasan siswa asuh per guru BK (tabel `student_guidance`)
+- [x] Foto siswa via Media Library (collection `photo`)
 
 ### Fase 3 — Buku Kasus & Pelanggaran
 - [ ] CRUD kasus + workflow (baru → penanganan → selesai → rujukan)

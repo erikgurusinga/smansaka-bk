@@ -5,6 +5,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/Components/ui/Button';
 import { Badge } from '@/Components/ui/Badge';
 import { PageProps, SemesterProgram, RplBk, AnnualProgram } from '@/types';
+import { FormErrorModal } from '@/Components/ui/FormErrorModal';
+import { useFormError } from '@/hooks/useFormError';
 
 interface SemesterDetail extends SemesterProgram {
     annual_program: AnnualProgram;
@@ -31,6 +33,7 @@ const MONTHS: Record<number, string> = {
 };
 
 export default function SemesterShow({ program, rpls, permissions }: Props) {
+    const { errorOpen, setErrorOpen, formErrors, handleError } = useFormError();
     const canWrite = permissions['program_semester']?.write;
 
     const rplMap = new Map(rpls.map((r) => [r.id, r]));
@@ -50,7 +53,7 @@ export default function SemesterShow({ program, rpls, permissions }: Props) {
         if (!confirm(`Hapus program semester "${program.title}"?`)) return;
         router.delete(route('semester.destroy', program.id), {
             onSuccess: () => toast.success('Program semester dihapus.'),
-            onError: () => toast.error('Terjadi kesalahan.'),
+            onError: handleError,
         });
     };
 
@@ -165,6 +168,7 @@ export default function SemesterShow({ program, rpls, permissions }: Props) {
                     ))
                 )}
             </div>
+            <FormErrorModal open={errorOpen} onOpenChange={setErrorOpen} errors={formErrors} />
         </AuthenticatedLayout>
     );
 }

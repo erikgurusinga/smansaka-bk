@@ -2,6 +2,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Plus, Eye, Pencil, Trash2, Lock, Unlock } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState } from 'react';
+import { useSelection } from '@/hooks/useSelection';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/Components/ui/Button';
 import { Badge } from '@/Components/ui/Badge';
@@ -12,8 +13,10 @@ import { Select } from '@/Components/ui/Select';
 import { EmptyState } from '@/Components/ui/EmptyState';
 import { DeleteModal } from '@/Components/ui/DeleteModal';
 import { PageProps, CaseRecord, AcademicYear, PaginatedData } from '@/types';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
+import { FormErrorModal } from '@/Components/ui/FormErrorModal';
+import { useFormError } from '@/hooks/useFormError';
 
 interface Props extends PageProps {
     cases: PaginatedData<CaseRecord>;
@@ -64,6 +67,7 @@ const categoryBadge = (c: string): 'default' | 'info' | 'warning' | 'danger' | '
 };
 
 export default function CasesIndex({ cases, academic_years, filters, permissions }: Props) {
+    const { errorOpen, setErrorOpen, formErrors, handleError } = useFormError();
     const { flash } = usePage<Props>().props;
 
     const [deleteModal, setDeleteModal] = useState<{ open: boolean; item: CaseRecord | null }>({
@@ -71,13 +75,15 @@ export default function CasesIndex({ cases, academic_years, filters, permissions
         item: null,
     });
     const [processing, setProcessing] = useState(false);
+    const { selected, toggle, togglePage, clearSelection, isAllPageSelected } = useSelection();
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
     const canWrite = permissions['cases']?.write;
 
     const handleFilter = (key: string, value: string) => {
         router.get(
             route('cases.index'),
-            { ...filters, [key]: value, page: 1 },
+            { ...filters, [key]: value, ...(key !== 'page' && { page: 1 }) },
             { preserveState: true, replace: true },
         );
     };
@@ -90,12 +96,27 @@ export default function CasesIndex({ cases, academic_years, filters, permissions
                 setDeleteModal({ open: false, item: null });
                 toast.success('Kasus dihapus.');
             },
-            onError: () => toast.error('Terjadi kesalahan.'),
+            onError: handleError,
             onFinish: () => setProcessing(false),
         });
     };
 
-    const formatDate = (d: string) => format(new Date(d), 'd MMM yyyy', { locale: idLocale });
+    const confirmBulkDelete = () => {
+        setProcessing(true);
+        router.delete(route('cases.bulk-destroy'), {
+            data: { ids: Array.from(selected) },
+            onSuccess: () => {
+                setBulkDeleteOpen(false);
+                clearSelection();
+                toast.success(`${selected.size} item dihapus.`);
+            },
+            onError: handleError,
+            onFinish: () => setProcessing(false),
+        });
+    };
+
+    const formatDate = (d: string) =>
+        format(parseISO(d.slice(0, 10)), 'd MMM yyyy', { locale: idLocale });
 
     return (
         <AuthenticatedLayout
@@ -117,14 +138,22 @@ export default function CasesIndex({ cases, academic_years, filters, permissions
                             Catatan kasus siswa (akademik, pribadi, sosial, karier, pelanggaran)
                         </p>
                     </div>
-                    {canWrite && (
-                        <Link href={route('cases.create')}>
-                            <Button>
-                                <Plus className="h-4 w-4" />
-                                Catat Kasus
+                    <div className="flex gap-2">
+                        {canWrite && selected.size > 0 && (
+                            <Button variant="danger" onClick={() => setBulkDeleteOpen(true)}>
+                                <Trash2 className="h-4 w-4" />
+                                Hapus {selected.size} terpilih
                             </Button>
-                        </Link>
-                    )}
+                        )}
+                        {canWrite && (
+                            <Link href={route('cases.create')}>
+                                <Button>
+                                    <Plus className="h-4 w-4" />
+                                    Catat Kasus
+                                </Button>
+                            </Link>
+                        )}
+                    </div>
                 </div>
 
                 <div className="rounded-2xl bg-white shadow-sm ring-1 ring-neutral-100">
@@ -174,6 +203,14 @@ export default function CasesIndex({ cases, academic_years, filters, permissions
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-neutral-100 bg-neutral-50 text-left text-xs font-medium tracking-wide text-neutral-500 uppercase">
+                                    <th className="w-10 px-4 py-3">
+                                        <input
+                                            type="checkbox"
+                                            className="text-primary-600 h-4 w-4 rounded border-neutral-300"
+                                            checked={isAllPageSelected(cases.data.map((i) => i.id))}
+                                            onChange={() => togglePage(cases.data.map((i) => i.id))}
+                                        />
+                                    </th>
                                     <th className="px-4 py-3">Siswa</th>
                                     <th className="px-4 py-3">Kategori</th>
                                     <th className="px-4 py-3">Judul</th>
@@ -186,13 +223,21 @@ export default function CasesIndex({ cases, academic_years, filters, permissions
                             <tbody className="divide-y divide-neutral-50">
                                 {cases.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7}>
+                                        <td colSpan={8}>
                                             <EmptyState description="Belum ada catatan kasus." />
                                         </td>
                                     </tr>
                                 ) : (
                                     cases.data.map((item) => (
                                         <tr key={item.id} className="hover:bg-neutral-50/50">
+                                            <td className="px-4 py-2">
+                                                <input
+                                                    type="checkbox"
+                                                    className="text-primary-600 h-4 w-4 rounded border-neutral-300"
+                                                    checked={selected.has(item.id)}
+                                                    onChange={() => toggle(item.id)}
+                                                />
+                                            </td>
                                             <td className="px-4 py-3">
                                                 <p className="font-medium text-neutral-900">
                                                     {item.student?.name ?? '—'}
@@ -293,6 +338,16 @@ export default function CasesIndex({ cases, academic_years, filters, permissions
                 onConfirm={confirmDelete}
                 loading={processing}
             />
+
+            <DeleteModal
+                open={bulkDeleteOpen}
+                onOpenChange={setBulkDeleteOpen}
+                title="Hapus Data Terpilih"
+                description={`Yakin ingin menghapus ${selected.size} item? Tindakan ini tidak dapat dibatalkan.`}
+                onConfirm={confirmBulkDelete}
+                loading={processing}
+            />
+            <FormErrorModal open={errorOpen} onOpenChange={setErrorOpen} errors={formErrors} />
         </AuthenticatedLayout>
     );
 }

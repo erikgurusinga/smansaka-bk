@@ -7,6 +7,8 @@ import { Button } from '@/Components/ui/Button';
 import { Select } from '@/Components/ui/Select';
 import { Label } from '@/Components/ui/Label';
 import { PageProps, SociometrySession, Student } from '@/types';
+import { FormErrorModal } from '@/Components/ui/FormErrorModal';
+import { useFormError } from '@/hooks/useFormError';
 
 interface ExistingChoice {
     criterion_key: string;
@@ -24,6 +26,7 @@ interface Props extends PageProps {
 type ChoicesState = Record<string, Array<number | ''>>;
 
 export default function SociometryFill({ session, student, classmates, existing_choices }: Props) {
+    const { errorOpen, setErrorOpen, formErrors, handleError } = useFormError();
     const criteria = session.criteria ?? [];
     const max = session.max_choices;
 
@@ -73,7 +76,7 @@ export default function SociometryFill({ session, student, classmates, existing_
             { choices: payload },
             {
                 onSuccess: () => toast.success('Pilihan tersimpan.'),
-                onError: () => toast.error('Terjadi kesalahan.'),
+                onError: handleError,
                 onFinish: () => setProcessing(false),
             },
         );
@@ -170,6 +173,7 @@ export default function SociometryFill({ session, student, classmates, existing_
                     </Button>
                 </div>
             </div>
+            <FormErrorModal open={errorOpen} onOpenChange={setErrorOpen} errors={formErrors} />
         </AuthenticatedLayout>
     );
 }

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
+import { useSelection } from '@/hooks/useSelection';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -19,6 +20,8 @@ import { PerPageSelect } from '@/Components/ui/PerPageSelect';
 import { SearchInput } from '@/Components/ui/SearchInput';
 import { EmptyState } from '@/Components/ui/EmptyState';
 import { PageProps, SchoolClass, AcademicYear, User, PaginatedData } from '@/types';
+import { FormErrorModal } from '@/Components/ui/FormErrorModal';
+import { useFormError } from '@/hooks/useFormError';
 
 const schema = z.object({
     name: z.string().min(1, 'Nama kelas wajib diisi'),
@@ -57,6 +60,7 @@ export default function ClassesIndex({
     filters,
     permissions,
 }: Props) {
+    const { errorOpen, setErrorOpen, formErrors, handleError } = useFormError();
     const { flash } = usePage<Props>().props;
 
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -66,6 +70,8 @@ export default function ClassesIndex({
     });
     const [editing, setEditing] = useState<SchoolClass | null>(null);
     const [processing, setProcessing] = useState(false);
+    const { selected, toggle, togglePage, clearSelection, isAllPageSelected } = useSelection();
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
     const canWrite = permissions['classes']?.write;
 
@@ -126,7 +132,7 @@ export default function ClassesIndex({
                 setDialogOpen(false);
                 toast.success(editing ? 'Kelas diperbarui.' : 'Kelas ditambahkan.');
             },
-            onError: () => toast.error('Terjadi kesalahan.'),
+            onError: handleError,
             onFinish: () => setProcessing(false),
         });
     };
@@ -139,7 +145,21 @@ export default function ClassesIndex({
                 setDeleteModal({ open: false, item: null });
                 toast.success('Kelas dihapus.');
             },
-            onError: () => toast.error('Gagal menghapus.'),
+            onError: handleError,
+            onFinish: () => setProcessing(false),
+        });
+    };
+
+    const confirmBulkDelete = () => {
+        setProcessing(true);
+        router.delete(route('classes.bulk-destroy'), {
+            data: { ids: Array.from(selected) },
+            onSuccess: () => {
+                setBulkDeleteOpen(false);
+                clearSelection();
+                toast.success(`${selected.size} item dihapus.`);
+            },
+            onError: handleError,
             onFinish: () => setProcessing(false),
         });
     };
@@ -147,7 +167,7 @@ export default function ClassesIndex({
     const handleFilter = (key: string, value: string) => {
         router.get(
             route('classes.index'),
-            { ...filters, [key]: value, page: 1 },
+            { ...filters, [key]: value, ...(key !== 'page' && { page: 1 }) },
             { preserveState: true, replace: true },
         );
     };
@@ -176,10 +196,18 @@ export default function ClassesIndex({
                         </p>
                     </div>
                     {canWrite && (
-                        <Button onClick={openCreate} size="md">
-                            <Plus className="h-4 w-4" />
-                            Tambah Kelas
-                        </Button>
+                        <div className="flex gap-2">
+                            {selected.size > 0 && (
+                                <Button variant="danger" onClick={() => setBulkDeleteOpen(true)}>
+                                    <Trash2 className="h-4 w-4" />
+                                    Hapus {selected.size} terpilih
+                                </Button>
+                            )}
+                            <Button onClick={openCreate} size="md">
+                                <Plus className="h-4 w-4" />
+                                Tambah Kelas
+                            </Button>
+                        </div>
                     )}
                 </div>
 
@@ -218,6 +246,18 @@ export default function ClassesIndex({
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-neutral-100 bg-neutral-50 text-left text-xs font-medium tracking-wide text-neutral-500 uppercase">
+                                    <th className="w-10 px-4 py-3">
+                                        <input
+                                            type="checkbox"
+                                            className="text-primary-600 h-4 w-4 rounded border-neutral-300"
+                                            checked={isAllPageSelected(
+                                                classes.data.map((i) => i.id),
+                                            )}
+                                            onChange={() =>
+                                                togglePage(classes.data.map((i) => i.id))
+                                            }
+                                        />
+                                    </th>
                                     <th className="px-4 py-3">Nama Kelas</th>
                                     <th className="px-4 py-3">Tingkat</th>
                                     <th className="px-4 py-3">Tahun Ajaran</th>
@@ -229,13 +269,21 @@ export default function ClassesIndex({
                             <tbody className="divide-y divide-neutral-50">
                                 {classes.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={canWrite ? 6 : 5}>
+                                        <td colSpan={canWrite ? 7 : 6}>
                                             <EmptyState description="Belum ada kelas yang ditambahkan." />
                                         </td>
                                     </tr>
                                 ) : (
                                     classes.data.map((item) => (
                                         <tr key={item.id} className="hover:bg-neutral-50/50">
+                                            <td className="px-4 py-2">
+                                                <input
+                                                    type="checkbox"
+                                                    className="text-primary-600 h-4 w-4 rounded border-neutral-300"
+                                                    checked={selected.has(item.id)}
+                                                    onChange={() => toggle(item.id)}
+                                                />
+                                            </td>
                                             <td className="px-4 py-3 font-medium text-neutral-900">
                                                 {item.name}
                                             </td>
@@ -369,6 +417,16 @@ export default function ClassesIndex({
                 onConfirm={confirmDelete}
                 loading={processing}
             />
+
+            <DeleteModal
+                open={bulkDeleteOpen}
+                onOpenChange={setBulkDeleteOpen}
+                title="Hapus Data Terpilih"
+                description={`Yakin ingin menghapus ${selected.size} item? Tindakan ini tidak dapat dibatalkan.`}
+                onConfirm={confirmBulkDelete}
+                loading={processing}
+            />
+            <FormErrorModal open={errorOpen} onOpenChange={setErrorOpen} errors={formErrors} />
         </AuthenticatedLayout>
     );
 }

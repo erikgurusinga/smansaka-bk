@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
+import { useSelection } from '@/hooks/useSelection';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -20,6 +21,8 @@ import { PerPageSelect } from '@/Components/ui/PerPageSelect';
 import { SearchInput } from '@/Components/ui/SearchInput';
 import { EmptyState } from '@/Components/ui/EmptyState';
 import { PageProps, Violation, PaginatedData } from '@/types';
+import { FormErrorModal } from '@/Components/ui/FormErrorModal';
+import { useFormError } from '@/hooks/useFormError';
 
 const schema = z.object({
     name: z.string().min(1, 'Nama pelanggaran wajib diisi').max(200),
@@ -55,6 +58,7 @@ const categoryBadge = (c: string): 'success' | 'warning' | 'danger' => {
 };
 
 export default function ViolationsIndex({ violations, filters, permissions }: Props) {
+    const { errorOpen, setErrorOpen, formErrors, handleError } = useFormError();
     const { flash } = usePage<Props>().props;
 
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -64,6 +68,8 @@ export default function ViolationsIndex({ violations, filters, permissions }: Pr
     });
     const [editing, setEditing] = useState<Violation | null>(null);
     const [processing, setProcessing] = useState(false);
+    const { selected, toggle, togglePage, clearSelection, isAllPageSelected } = useSelection();
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
     const canWrite = permissions['violations']?.write;
 
@@ -109,7 +115,7 @@ export default function ViolationsIndex({ violations, filters, permissions }: Pr
                     editing ? 'Jenis pelanggaran diperbarui.' : 'Jenis pelanggaran ditambahkan.',
                 );
             },
-            onError: () => toast.error('Terjadi kesalahan.'),
+            onError: handleError,
             onFinish: () => setProcessing(false),
         });
     };
@@ -122,7 +128,21 @@ export default function ViolationsIndex({ violations, filters, permissions }: Pr
                 setDeleteModal({ open: false, item: null });
                 toast.success('Jenis pelanggaran dihapus.');
             },
-            onError: () => toast.error('Tidak dapat menghapus — sudah digunakan.'),
+            onError: handleError,
+            onFinish: () => setProcessing(false),
+        });
+    };
+
+    const confirmBulkDelete = () => {
+        setProcessing(true);
+        router.delete(route('violations.bulk-destroy'), {
+            data: { ids: Array.from(selected) },
+            onSuccess: () => {
+                setBulkDeleteOpen(false);
+                clearSelection();
+                toast.success(`${selected.size} item dihapus.`);
+            },
+            onError: handleError,
             onFinish: () => setProcessing(false),
         });
     };
@@ -130,7 +150,7 @@ export default function ViolationsIndex({ violations, filters, permissions }: Pr
     const handleFilter = (key: string, value: string) => {
         router.get(
             route('violations.index'),
-            { ...filters, [key]: value, page: 1 },
+            { ...filters, [key]: value, ...(key !== 'page' && { page: 1 }) },
             { preserveState: true, replace: true },
         );
     };
@@ -158,10 +178,18 @@ export default function ViolationsIndex({ violations, filters, permissions }: Pr
                         </p>
                     </div>
                     {canWrite && (
-                        <Button onClick={openCreate}>
-                            <Plus className="h-4 w-4" />
-                            Tambah Jenis
-                        </Button>
+                        <div className="flex gap-2">
+                            {selected.size > 0 && (
+                                <Button variant="danger" onClick={() => setBulkDeleteOpen(true)}>
+                                    <Trash2 className="h-4 w-4" />
+                                    Hapus {selected.size} terpilih
+                                </Button>
+                            )}
+                            <Button onClick={openCreate}>
+                                <Plus className="h-4 w-4" />
+                                Tambah Jenis
+                            </Button>
+                        </div>
                     )}
                 </div>
 
@@ -194,6 +222,18 @@ export default function ViolationsIndex({ violations, filters, permissions }: Pr
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-neutral-100 bg-neutral-50 text-left text-xs font-medium tracking-wide text-neutral-500 uppercase">
+                                    <th className="w-10 px-4 py-3">
+                                        <input
+                                            type="checkbox"
+                                            className="text-primary-600 h-4 w-4 rounded border-neutral-300"
+                                            checked={isAllPageSelected(
+                                                violations.data.map((i) => i.id),
+                                            )}
+                                            onChange={() =>
+                                                togglePage(violations.data.map((i) => i.id))
+                                            }
+                                        />
+                                    </th>
                                     <th className="px-4 py-3">Nama Pelanggaran</th>
                                     <th className="px-4 py-3">Kategori</th>
                                     <th className="px-4 py-3">Poin</th>
@@ -205,13 +245,21 @@ export default function ViolationsIndex({ violations, filters, permissions }: Pr
                             <tbody className="divide-y divide-neutral-50">
                                 {violations.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={canWrite ? 6 : 5}>
+                                        <td colSpan={canWrite ? 7 : 6}>
                                             <EmptyState description="Belum ada jenis pelanggaran." />
                                         </td>
                                     </tr>
                                 ) : (
                                     violations.data.map((item) => (
                                         <tr key={item.id} className="hover:bg-neutral-50/50">
+                                            <td className="px-4 py-2">
+                                                <input
+                                                    type="checkbox"
+                                                    className="text-primary-600 h-4 w-4 rounded border-neutral-300"
+                                                    checked={selected.has(item.id)}
+                                                    onChange={() => toggle(item.id)}
+                                                />
+                                            </td>
                                             <td className="px-4 py-3 font-medium text-neutral-900">
                                                 {item.name}
                                                 {item.description && (
@@ -357,6 +405,16 @@ export default function ViolationsIndex({ violations, filters, permissions }: Pr
                 onConfirm={confirmDelete}
                 loading={processing}
             />
+
+            <DeleteModal
+                open={bulkDeleteOpen}
+                onOpenChange={setBulkDeleteOpen}
+                title="Hapus Data Terpilih"
+                description={`Yakin ingin menghapus ${selected.size} item? Tindakan ini tidak dapat dibatalkan.`}
+                onConfirm={confirmBulkDelete}
+                loading={processing}
+            />
+            <FormErrorModal open={errorOpen} onOpenChange={setErrorOpen} errors={formErrors} />
         </AuthenticatedLayout>
     );
 }

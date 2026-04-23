@@ -170,4 +170,12 @@ class AnnualProgramController extends Controller
         return redirect()->route('annual.index')
             ->with('success', 'Program tahunan dihapus.');
     }
+
+    public function destroyBulk(Request $request): RedirectResponse
+    {
+        $ids = $request->validate(['ids' => 'required|array|min:1', 'ids.*' => 'integer'])['ids'];
+        AnnualProgram::whereIn('id', $ids)->delete();
+
+        return back()->with('success', count($ids).' program tahunan berhasil dihapus.');
+    }
 }

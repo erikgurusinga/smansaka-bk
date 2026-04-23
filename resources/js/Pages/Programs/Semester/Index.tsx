@@ -28,7 +28,7 @@ export default function SemesterIndex({ records, annuals, filters }: Props) {
     const handleFilter = (key: string, value: string) => {
         router.get(
             route('semester.index'),
-            { ...filters, [key]: value, page: 1 },
+            { ...filters, [key]: value, ...(key !== 'page' && { page: 1 }) },
             { preserveState: true, replace: true },
         );
     };

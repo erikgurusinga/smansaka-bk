@@ -13,6 +13,8 @@ import { InputError } from '@/Components/ui/InputError';
 import { Select } from '@/Components/ui/Select';
 import { Textarea } from '@/Components/ui/Textarea';
 import { PageProps, SchoolClass, AcademicYear } from '@/types';
+import { FormErrorModal } from '@/Components/ui/FormErrorModal';
+import { useFormError } from '@/hooks/useFormError';
 
 const schema = z.object({
     class_id: z.string().min(1, 'Kelas wajib dipilih'),
@@ -46,6 +48,7 @@ const defaultCriteria: Criterion[] = [
 ];
 
 export default function SociometryCreate({ classes, academic_year }: Props) {
+    const { errorOpen, setErrorOpen, formErrors, handleError } = useFormError();
     const [criteria, setCriteria] = useState<Criterion[]>(defaultCriteria);
     const [processing, setProcessing] = useState(false);
 
@@ -99,7 +102,7 @@ export default function SociometryCreate({ classes, academic_year }: Props) {
             },
             {
                 onSuccess: () => toast.success('Sesi sosiometri dibuat.'),
-                onError: () => toast.error('Terjadi kesalahan.'),
+                onError: handleError,
                 onFinish: () => setProcessing(false),
             },
         );
@@ -275,6 +278,7 @@ export default function SociometryCreate({ classes, academic_year }: Props) {
                     </div>
                 </form>
             </div>
+            <FormErrorModal open={errorOpen} onOpenChange={setErrorOpen} errors={formErrors} />
         </AuthenticatedLayout>
     );
 }

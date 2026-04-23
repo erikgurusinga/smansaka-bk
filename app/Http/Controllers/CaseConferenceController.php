@@ -64,14 +64,41 @@ class CaseConferenceController extends Controller
             'notes' => 'nullable|string',
             'outcome' => 'nullable|string',
             'status' => 'required|in:dijadwalkan,selesai',
+            'documentation' => 'nullable|array|max:2',
+            'documentation.*' => 'image|mimes:jpg,jpeg,png,webp|max:2048',
+            'agreement' => 'nullable|file|mimes:pdf|max:5120',
         ]);
 
+        unset($data['documentation'], $data['agreement']);
         $data['counselor_id'] = Auth::id();
 
         $conference = CaseConference::create($data);
 
+        foreach ($request->file('documentation', []) as $file) {
+            $conference->addMedia($file)->toMediaCollection('documentation');
+        }
+
+        if ($request->hasFile('agreement')) {
+            $conference->addMedia($request->file('agreement'))->toMediaCollection('agreements');
+        }
+
         return redirect()->route('case-conferences.show', $conference->id)
             ->with('success', 'Konferensi kasus dicatat.');
+    }
+
+    private function mediaItems(CaseConference $conference): array
+    {
+        return $conference->getMedia('documentation')
+            ->map(fn ($m) => ['id' => $m->id, 'url' => $m->getUrl(), 'name' => $m->file_name])
+            ->values()
+            ->toArray();
+    }
+
+    private function agreementItem(CaseConference $conference): ?array
+    {
+        $media = $conference->getFirstMedia('agreements');
+
+        return $media ? ['id' => $media->id, 'url' => $media->getUrl(), 'name' => $media->file_name] : null;
     }
 
     public function show(CaseConference $caseConference): Response
@@ -80,6 +107,20 @@ class CaseConferenceController extends Controller
 
         return Inertia::render('CaseConferences/Show', [
             'conference' => $caseConference,
+            'documentation' => $this->mediaItems($caseConference),
+            'agreement' => $this->agreementItem($caseConference),
+        ]);
+    }
+
+    public function edit(CaseConference $caseConference): Response
+    {
+        $caseConference->load(['caseRecord', 'academicYear']);
+
+        return Inertia::render('CaseConferences/Edit', [
+            'conference' => $caseConference,
+            'cases' => CaseRecord::with('student')->orderByDesc('created_at')->get(['id', 'title', 'student_id']),
+            'documentation' => $this->mediaItems($caseConference),
+            'agreement' => $this->agreementItem($caseConference),
         ]);
     }
 
@@ -94,11 +135,39 @@ class CaseConferenceController extends Controller
             'notes' => 'nullable|string',
             'outcome' => 'nullable|string',
             'status' => 'required|in:dijadwalkan,selesai',
+            'delete_media_ids' => 'nullable|array',
+            'delete_media_ids.*' => 'integer',
+            'documentation' => 'nullable|array',
+            'documentation.*' => 'image|mimes:jpg,jpeg,png,webp|max:2048',
+            'delete_agreement' => 'nullable|boolean',
+            'agreement' => 'nullable|file|mimes:pdf|max:5120',
         ]);
 
-        $caseConference->update($data);
+        $caseConference->update(\Arr::except($data, ['delete_media_ids', 'documentation', 'delete_agreement', 'agreement']));
 
-        return back()->with('success', 'Konferensi kasus diperbarui.');
+        foreach ($request->input('delete_media_ids', []) as $mediaId) {
+            $caseConference->media()->where('id', $mediaId)->first()?->delete();
+        }
+
+        $remaining = $caseConference->getMedia('documentation')->count();
+        foreach ($request->file('documentation', []) as $file) {
+            if ($remaining >= 2) {
+                break;
+            }
+            $caseConference->addMedia($file)->toMediaCollection('documentation');
+            $remaining++;
+        }
+
+        if ($request->boolean('delete_agreement')) {
+            $caseConference->getFirstMedia('agreements')?->delete();
+        }
+
+        if ($request->hasFile('agreement')) {
+            $caseConference->addMedia($request->file('agreement'))->toMediaCollection('agreements');
+        }
+
+        return redirect()->route('case-conferences.show', $caseConference)
+            ->with('success', 'Konferensi kasus diperbarui.');
     }
 
     public function destroy(CaseConference $caseConference): RedirectResponse
@@ -107,5 +176,13 @@ class CaseConferenceController extends Controller
 
         return redirect()->route('case-conferences.index')
             ->with('success', 'Konferensi kasus dihapus.');
+    }
+
+    public function destroyBulk(Request $request): RedirectResponse
+    {
+        $ids = $request->validate(['ids' => 'required|array|min:1', 'ids.*' => 'integer'])['ids'];
+        CaseConference::whereIn('id', $ids)->delete();
+
+        return back()->with('success', count($ids).' konferensi kasus berhasil dihapus.');
     }
 }

@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\AcademicYear;
 use App\Models\CaseRecord;
 use App\Models\Referral;
-use App\Models\Student;
+use App\Models\SchoolClass;
 use App\Services\PdfService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -49,7 +49,7 @@ class ReferralController extends Controller
     public function create(): Response
     {
         return Inertia::render('Referrals/Create', [
-            'students' => Student::where('status', 'aktif')->orderBy('name')->get(['id', 'nis', 'name', 'class_id']),
+            'classes' => SchoolClass::orderBy('level')->orderBy('name')->get(['id', 'name', 'level']),
             'cases' => CaseRecord::with('student')->orderByDesc('created_at')->get(['id', 'title', 'student_id']),
             'academic_year' => AcademicYear::where('is_active', true)->first(),
         ]);
@@ -66,22 +66,64 @@ class ReferralController extends Controller
             'date' => 'required|date',
             'notes' => 'nullable|string',
             'status' => 'required|in:aktif,diterima,ditolak,selesai',
+            'documentation' => 'nullable|array|max:2',
+            'documentation.*' => 'image|mimes:jpg,jpeg,png,webp|max:2048',
+            'agreement' => 'nullable|file|mimes:pdf|max:5120',
         ]);
 
+        unset($data['documentation'], $data['agreement']);
         $data['counselor_id'] = Auth::id();
 
         $referral = Referral::create($data);
+
+        foreach ($request->file('documentation', []) as $file) {
+            $referral->addMedia($file)->toMediaCollection('documentation');
+        }
+
+        if ($request->hasFile('agreement')) {
+            $referral->addMedia($request->file('agreement'))->toMediaCollection('agreements');
+        }
 
         return redirect()->route('referrals.show', $referral->id)
             ->with('success', 'Referral dicatat.');
     }
 
+    private function mediaItems(Referral $referral): array
+    {
+        return $referral->getMedia('documentation')
+            ->map(fn ($m) => ['id' => $m->id, 'url' => $m->getUrl(), 'name' => $m->file_name])
+            ->values()
+            ->toArray();
+    }
+
+    private function agreementItem(Referral $referral): ?array
+    {
+        $media = $referral->getFirstMedia('agreements');
+
+        return $media ? ['id' => $media->id, 'url' => $media->getUrl(), 'name' => $media->file_name] : null;
+    }
+
     public function show(Referral $referral): Response
     {
-        $referral->load(['student.schoolClass', 'caseRecord', 'counselor', 'academicYear']);
+        $referral->load(['student.schoolClass', 'student.media', 'caseRecord', 'counselor', 'academicYear']);
 
         return Inertia::render('Referrals/Show', [
             'referral' => $referral,
+            'documentation' => $this->mediaItems($referral),
+            'agreement' => $this->agreementItem($referral),
+            'student_photo' => $referral->student?->getFirstMediaUrl('photo') ?: null,
+        ]);
+    }
+
+    public function edit(Referral $referral): Response
+    {
+        $referral->load(['student.schoolClass', 'caseRecord', 'academicYear']);
+
+        return Inertia::render('Referrals/Edit', [
+            'referral' => $referral,
+            'cases' => CaseRecord::with('student')->orderByDesc('created_at')->get(['id', 'title', 'student_id']),
+            'documentation' => $this->mediaItems($referral),
+            'agreement' => $this->agreementItem($referral),
         ]);
     }
 
@@ -93,11 +135,39 @@ class ReferralController extends Controller
             'date' => 'required|date',
             'notes' => 'nullable|string',
             'status' => 'required|in:aktif,diterima,ditolak,selesai',
+            'delete_media_ids' => 'nullable|array',
+            'delete_media_ids.*' => 'integer',
+            'documentation' => 'nullable|array',
+            'documentation.*' => 'image|mimes:jpg,jpeg,png,webp|max:2048',
+            'delete_agreement' => 'nullable|boolean',
+            'agreement' => 'nullable|file|mimes:pdf|max:5120',
         ]);
 
-        $referral->update($data);
+        $referral->update(\Arr::except($data, ['delete_media_ids', 'documentation', 'delete_agreement', 'agreement']));
 
-        return back()->with('success', 'Referral diperbarui.');
+        foreach ($request->input('delete_media_ids', []) as $mediaId) {
+            $referral->media()->where('id', $mediaId)->first()?->delete();
+        }
+
+        $remaining = $referral->getMedia('documentation')->count();
+        foreach ($request->file('documentation', []) as $file) {
+            if ($remaining >= 2) {
+                break;
+            }
+            $referral->addMedia($file)->toMediaCollection('documentation');
+            $remaining++;
+        }
+
+        if ($request->boolean('delete_agreement')) {
+            $referral->getFirstMedia('agreements')?->delete();
+        }
+
+        if ($request->hasFile('agreement')) {
+            $referral->addMedia($request->file('agreement'))->toMediaCollection('agreements');
+        }
+
+        return redirect()->route('referrals.show', $referral)
+            ->with('success', 'Referral diperbarui.');
     }
 
     public function destroy(Referral $referral): RedirectResponse
@@ -113,5 +183,13 @@ class ReferralController extends Controller
         $referral->load(['student.schoolClass', 'caseRecord', 'counselor', 'academicYear']);
 
         return PdfService::inline('pdf.referral', ['referral' => $referral], 'surat-rujukan');
+    }
+
+    public function destroyBulk(Request $request): RedirectResponse
+    {
+        $ids = $request->validate(['ids' => 'required|array|min:1', 'ids.*' => 'integer'])['ids'];
+        Referral::whereIn('id', $ids)->delete();
+
+        return back()->with('success', count($ids).' referral berhasil dihapus.');
     }
 }

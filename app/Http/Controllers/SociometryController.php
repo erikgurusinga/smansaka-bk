@@ -180,4 +180,12 @@ class SociometryController extends Controller
         return redirect()->route('sociometry.index')
             ->with('success', 'Sesi sosiometri dihapus.');
     }
+
+    public function destroyBulk(Request $request): RedirectResponse
+    {
+        $ids = $request->validate(['ids' => 'required|array|min:1', 'ids.*' => 'integer'])['ids'];
+        SociometrySession::whereIn('id', $ids)->delete();
+
+        return back()->with('success', count($ids).' sesi sosiometri berhasil dihapus.');
+    }
 }

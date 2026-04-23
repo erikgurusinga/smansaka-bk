@@ -5,11 +5,14 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/Components/ui/Button';
 import { Badge } from '@/Components/ui/Badge';
 import { PageProps, CaseRecord } from '@/types';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
+import { FormErrorModal } from '@/Components/ui/FormErrorModal';
+import { useFormError } from '@/hooks/useFormError';
 
 interface Props extends PageProps {
     case: CaseRecord;
+    student_photo: string | null;
 }
 
 const statusBadge = (s: string): 'info' | 'warning' | 'success' | 'danger' => {
@@ -36,10 +39,13 @@ const statusLabel = (s: string) =>
 
 const formatDate = (d: string | null, withTime = false) => {
     if (!d) return '—';
-    return format(new Date(d), withTime ? 'd MMM yyyy HH:mm' : 'd MMM yyyy', { locale: idLocale });
+    return format(parseISO(d.slice(0, 10)), withTime ? 'd MMM yyyy HH:mm' : 'd MMM yyyy', {
+        locale: idLocale,
+    });
 };
 
-export default function CasesShow({ case: caseRecord, permissions }: Props) {
+export default function CasesShow({ case: caseRecord, student_photo, permissions }: Props) {
+    const { errorOpen, setErrorOpen, formErrors, handleError } = useFormError();
     const canWrite = permissions['cases']?.write;
 
     const quickStatus = (newStatus: string) => {
@@ -54,7 +60,7 @@ export default function CasesShow({ case: caseRecord, permissions }: Props) {
             },
             {
                 onSuccess: () => toast.success('Status kasus diperbarui.'),
-                onError: () => toast.error('Terjadi kesalahan.'),
+                onError: handleError,
             },
         );
     };
@@ -137,12 +143,27 @@ export default function CasesShow({ case: caseRecord, permissions }: Props) {
                         <p className="mb-3 text-xs font-semibold tracking-wide text-neutral-400 uppercase">
                             Siswa
                         </p>
-                        <p className="text-lg font-semibold text-neutral-900">
-                            {caseRecord.student?.name ?? '—'}
-                        </p>
-                        <p className="text-sm text-neutral-500">
-                            {caseRecord.student?.school_class?.name ?? 'Tanpa Kelas'}
-                        </p>
+                        <div className="flex items-center gap-3">
+                            {student_photo ? (
+                                <img
+                                    src={student_photo}
+                                    alt={caseRecord.student?.name}
+                                    className="h-14 w-14 shrink-0 rounded-full object-cover ring-2 ring-neutral-100"
+                                />
+                            ) : (
+                                <div className="bg-primary-100 text-primary-700 flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-xl font-semibold">
+                                    {caseRecord.student?.name?.[0]?.toUpperCase() ?? '?'}
+                                </div>
+                            )}
+                            <div>
+                                <p className="text-lg font-semibold text-neutral-900">
+                                    {caseRecord.student?.name ?? '—'}
+                                </p>
+                                <p className="text-sm text-neutral-500">
+                                    {caseRecord.student?.school_class?.name ?? 'Tanpa Kelas'}
+                                </p>
+                            </div>
+                        </div>
                     </div>
                     <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-neutral-100">
                         <p className="mb-3 text-xs font-semibold tracking-wide text-neutral-400 uppercase">
@@ -189,6 +210,7 @@ export default function CasesShow({ case: caseRecord, permissions }: Props) {
                     </p>
                 </div>
             </div>
+            <FormErrorModal open={errorOpen} onOpenChange={setErrorOpen} errors={formErrors} />
         </AuthenticatedLayout>
     );
 }

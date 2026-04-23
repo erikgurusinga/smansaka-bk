@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
+import { useSelection } from '@/hooks/useSelection';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Camera, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/Components/ui/Button';
@@ -20,6 +21,8 @@ import { PerPageSelect } from '@/Components/ui/PerPageSelect';
 import { SearchInput } from '@/Components/ui/SearchInput';
 import { EmptyState } from '@/Components/ui/EmptyState';
 import { PageProps, Guardian, PaginatedData } from '@/types';
+import { FormErrorModal } from '@/Components/ui/FormErrorModal';
+import { useFormError } from '@/hooks/useFormError';
 
 const schema = z.object({
     name: z.string().min(1, 'Nama wajib diisi'),
@@ -48,7 +51,18 @@ const relationBadge = (r: string): 'default' | 'info' | 'neutral' => {
     return 'neutral';
 };
 
+interface PopoverStudent {
+    id: number;
+    nis: string;
+    name: string;
+    gender: 'L' | 'P';
+    status: string;
+    class_name: string | null;
+    photo_url: string;
+}
+
 export default function ParentsIndex({ parents, filters, permissions }: Props) {
+    const { errorOpen, setErrorOpen, formErrors, handleError } = useFormError();
     const { flash } = usePage<Props>().props;
 
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -58,6 +72,56 @@ export default function ParentsIndex({ parents, filters, permissions }: Props) {
     });
     const [editing, setEditing] = useState<Guardian | null>(null);
     const [processing, setProcessing] = useState(false);
+    const { selected, toggle, togglePage, clearSelection, isAllPageSelected } = useSelection();
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+    const [photoModal, setPhotoModal] = useState<{ open: boolean; item: Guardian | null }>({
+        open: false,
+        item: null,
+    });
+    const [photoFile, setPhotoFile] = useState<File | null>(null);
+    const photoRef = useRef<HTMLInputElement>(null);
+
+    const [popover, setPopover] = useState<{
+        parentId: number;
+        parentName: string;
+        students: PopoverStudent[] | null;
+        loading: boolean;
+        x: number;
+        y: number;
+    } | null>(null);
+    const popoverRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+                setPopover(null);
+            }
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    const openStudentsPopover = async (e: React.MouseEvent, item: Guardian) => {
+        e.stopPropagation();
+        const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+        setPopover({
+            parentId: item.id,
+            parentName: item.name,
+            students: null,
+            loading: true,
+            x: rect.left + rect.width / 2,
+            y: rect.bottom + 6,
+        });
+        try {
+            const res = await fetch(`/parents/${item.id}/students`);
+            if (res.ok) {
+                const data: PopoverStudent[] = await res.json();
+                setPopover((prev) => (prev ? { ...prev, students: data, loading: false } : null));
+            }
+        } catch {
+            setPopover((prev) => (prev ? { ...prev, loading: false } : null));
+        }
+    };
 
     const canWrite = permissions['parents']?.write;
 
@@ -101,7 +165,7 @@ export default function ParentsIndex({ parents, filters, permissions }: Props) {
                 setDialogOpen(false);
                 toast.success(editing ? 'Data diperbarui.' : 'Orang tua ditambahkan.');
             },
-            onError: () => toast.error('Terjadi kesalahan.'),
+            onError: handleError,
             onFinish: () => setProcessing(false),
         });
     };
@@ -118,10 +182,39 @@ export default function ParentsIndex({ parents, filters, permissions }: Props) {
         });
     };
 
+    const confirmBulkDelete = () => {
+        setProcessing(true);
+        router.delete(route('parents.bulk-destroy'), {
+            data: { ids: Array.from(selected) },
+            onSuccess: () => {
+                setBulkDeleteOpen(false);
+                clearSelection();
+                toast.success(`${selected.size} item dihapus.`);
+            },
+            onError: handleError,
+            onFinish: () => setProcessing(false),
+        });
+    };
+
+    const submitPhoto = () => {
+        if (!photoModal.item || !photoFile) return;
+        setProcessing(true);
+        router.post(route('parents.photo', photoModal.item.id), { photo: photoFile } as never, {
+            forceFormData: true,
+            onSuccess: () => {
+                setPhotoModal({ open: false, item: null });
+                setPhotoFile(null);
+                toast.success('Foto diperbarui.');
+            },
+            onError: handleError,
+            onFinish: () => setProcessing(false),
+        });
+    };
+
     const handleFilter = (key: string, value: string) => {
         router.get(
             route('parents.index'),
-            { ...filters, [key]: value, page: 1 },
+            { ...filters, [key]: value, ...(key !== 'page' && { page: 1 }) },
             { preserveState: true, replace: true },
         );
     };
@@ -146,10 +239,18 @@ export default function ParentsIndex({ parents, filters, permissions }: Props) {
                         </p>
                     </div>
                     {canWrite && (
-                        <Button onClick={openCreate}>
-                            <Plus className="h-4 w-4" />
-                            Tambah
-                        </Button>
+                        <div className="flex gap-2">
+                            {selected.size > 0 && (
+                                <Button variant="danger" onClick={() => setBulkDeleteOpen(true)}>
+                                    <Trash2 className="h-4 w-4" />
+                                    Hapus {selected.size} terpilih
+                                </Button>
+                            )}
+                            <Button onClick={openCreate}>
+                                <Plus className="h-4 w-4" />
+                                Tambah
+                            </Button>
+                        </div>
                     )}
                 </div>
 
@@ -179,6 +280,19 @@ export default function ParentsIndex({ parents, filters, permissions }: Props) {
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-neutral-100 bg-neutral-50 text-left text-xs font-medium tracking-wide text-neutral-500 uppercase">
+                                    <th className="w-10 px-4 py-3">
+                                        <input
+                                            type="checkbox"
+                                            className="text-primary-600 h-4 w-4 rounded border-neutral-300"
+                                            checked={isAllPageSelected(
+                                                parents.data.map((i) => i.id),
+                                            )}
+                                            onChange={() =>
+                                                togglePage(parents.data.map((i) => i.id))
+                                            }
+                                        />
+                                    </th>
+                                    <th className="w-12 px-4 py-3"></th>
                                     <th className="px-4 py-3">Nama</th>
                                     <th className="px-4 py-3">Hubungan</th>
                                     <th className="px-4 py-3">Telepon</th>
@@ -190,13 +304,47 @@ export default function ParentsIndex({ parents, filters, permissions }: Props) {
                             <tbody className="divide-y divide-neutral-50">
                                 {parents.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={canWrite ? 6 : 5}>
+                                        <td colSpan={canWrite ? 8 : 7}>
                                             <EmptyState description="Belum ada data orang tua." />
                                         </td>
                                     </tr>
                                 ) : (
                                     parents.data.map((item) => (
                                         <tr key={item.id} className="hover:bg-neutral-50/50">
+                                            <td className="px-4 py-2">
+                                                <input
+                                                    type="checkbox"
+                                                    className="text-primary-600 h-4 w-4 rounded border-neutral-300"
+                                                    checked={selected.has(item.id)}
+                                                    onChange={() => toggle(item.id)}
+                                                />
+                                            </td>
+                                            <td className="px-4 py-2">
+                                                <div
+                                                    className="relative h-9 w-9 cursor-pointer overflow-hidden rounded-full bg-neutral-100"
+                                                    onClick={() =>
+                                                        canWrite &&
+                                                        setPhotoModal({ open: true, item })
+                                                    }
+                                                >
+                                                    {item.photo_url ? (
+                                                        <img
+                                                            src={item.photo_url}
+                                                            alt={item.name}
+                                                            className="h-full w-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <span className="flex h-full w-full items-center justify-center text-xs font-semibold text-neutral-400">
+                                                            {item.name.charAt(0)}
+                                                        </span>
+                                                    )}
+                                                    {canWrite && (
+                                                        <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition hover:bg-black/30">
+                                                            <Camera className="h-3 w-3 text-white opacity-0 transition hover:opacity-100" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </td>
                                             <td className="px-4 py-3 font-medium text-neutral-900">
                                                 {item.name}
                                             </td>
@@ -213,9 +361,13 @@ export default function ParentsIndex({ parents, filters, permissions }: Props) {
                                                 {item.occupation ?? '—'}
                                             </td>
                                             <td className="px-4 py-3 text-center">
-                                                <span className="rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-700">
+                                                <button
+                                                    onClick={(e) => openStudentsPopover(e, item)}
+                                                    className="hover:bg-primary-100 hover:text-primary-700 rounded-full bg-neutral-100 px-2.5 py-0.5 text-xs font-medium text-neutral-700 transition-colors"
+                                                    title="Lihat daftar siswa"
+                                                >
                                                     {item.students_count ?? 0}
-                                                </span>
+                                                </button>
                                             </td>
                                             {canWrite && (
                                                 <td className="px-4 py-3">
@@ -325,6 +477,131 @@ export default function ParentsIndex({ parents, filters, permissions }: Props) {
                 onConfirm={confirmDelete}
                 loading={processing}
             />
+
+            <DeleteModal
+                open={bulkDeleteOpen}
+                onOpenChange={setBulkDeleteOpen}
+                title="Hapus Data Terpilih"
+                description={`Yakin ingin menghapus ${selected.size} item? Tindakan ini tidak dapat dibatalkan.`}
+                onConfirm={confirmBulkDelete}
+                loading={processing}
+            />
+
+            <Dialog
+                open={photoModal.open}
+                onOpenChange={(open) => {
+                    setPhotoModal({ open, item: photoModal.item });
+                    setPhotoFile(null);
+                }}
+                title="Update Foto Orang Tua"
+                description={photoModal.item?.name}
+            >
+                <div className="space-y-4">
+                    <div
+                        className="hover:border-primary-400 hover:bg-primary-50/30 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-neutral-200 p-8"
+                        onClick={() => photoRef.current?.click()}
+                    >
+                        {photoFile ? (
+                            <img
+                                src={URL.createObjectURL(photoFile)}
+                                alt="preview"
+                                className="h-32 w-32 rounded-full object-cover"
+                            />
+                        ) : (
+                            <>
+                                <Upload className="mb-2 h-8 w-8 text-neutral-300" />
+                                <p className="text-sm text-neutral-500">Klik untuk pilih foto</p>
+                                <p className="text-xs text-neutral-400">
+                                    JPG, PNG, WebP — maks 2 MB
+                                </p>
+                            </>
+                        )}
+                        <input
+                            ref={photoRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
+                        />
+                    </div>
+                    <div className="flex justify-end gap-3">
+                        <Button
+                            variant="secondary"
+                            onClick={() => setPhotoModal({ open: false, item: null })}
+                        >
+                            Batal
+                        </Button>
+                        <Button onClick={submitPhoto} disabled={!photoFile || processing}>
+                            {processing ? 'Mengupload...' : 'Simpan Foto'}
+                        </Button>
+                    </div>
+                </div>
+            </Dialog>
+
+            {/* ── Popover siswa terhubung ── */}
+            {popover && (
+                <div
+                    ref={popoverRef}
+                    className="fixed z-50 w-72 rounded-xl border border-neutral-100 bg-white shadow-xl"
+                    style={{ left: popover.x, top: popover.y, transform: 'translateX(-50%)' }}
+                >
+                    <div className="flex items-center justify-between border-b border-neutral-100 px-3 py-2.5">
+                        <div>
+                            <p className="text-xs font-semibold text-neutral-800">
+                                {popover.parentName}
+                            </p>
+                            <p className="text-xs text-neutral-400">Siswa terhubung</p>
+                        </div>
+                        <button
+                            onClick={() => setPopover(null)}
+                            className="rounded p-0.5 text-neutral-400 hover:text-neutral-600"
+                        >
+                            ✕
+                        </button>
+                    </div>
+
+                    {popover.loading ? (
+                        <p className="py-5 text-center text-xs text-neutral-400">Memuat…</p>
+                    ) : !popover.students || popover.students.length === 0 ? (
+                        <p className="py-5 text-center text-xs text-neutral-400">
+                            Belum ada siswa terhubung.
+                        </p>
+                    ) : (
+                        <ul className="max-h-56 divide-y divide-neutral-50 overflow-y-auto">
+                            {popover.students.map((s) => (
+                                <li key={s.id} className="flex items-center gap-2.5 px-3 py-2">
+                                    <div className="h-8 w-8 flex-shrink-0 overflow-hidden rounded-full bg-neutral-100">
+                                        {s.photo_url ? (
+                                            <img
+                                                src={s.photo_url}
+                                                alt={s.name}
+                                                className="h-full w-full object-cover"
+                                            />
+                                        ) : (
+                                            <span className="flex h-full w-full items-center justify-center text-xs font-semibold text-neutral-400">
+                                                {s.name.charAt(0)}
+                                            </span>
+                                        )}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-xs font-medium text-neutral-900">
+                                            {s.name}
+                                        </p>
+                                        <p className="text-xs text-neutral-400">
+                                            {s.nis}
+                                            {s.class_name ? ` · ${s.class_name}` : ''}
+                                        </p>
+                                    </div>
+                                    <Badge variant={s.gender === 'L' ? 'info' : 'default'}>
+                                        {s.gender}
+                                    </Badge>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            )}
+            <FormErrorModal open={errorOpen} onOpenChange={setErrorOpen} errors={formErrors} />
         </AuthenticatedLayout>
     );
 }

@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AcademicYear;
-use App\Models\Student;
+use App\Models\SchoolClass;
 use App\Models\StudentViolation;
 use App\Models\Violation;
 use Illuminate\Http\RedirectResponse;
@@ -60,7 +60,7 @@ class StudentViolationController extends Controller
         return Inertia::render('StudentViolations/Index', [
             'records' => $records,
             'violations' => Violation::where('is_active', true)->orderBy('category')->orderBy('name')->get(['id', 'name', 'category', 'points']),
-            'students' => Student::where('status', 'aktif')->orderBy('name')->get(['id', 'nis', 'name', 'class_id']),
+            'classes' => SchoolClass::orderBy('level')->orderBy('name')->get(['id', 'name', 'level']),
             'academic_years' => AcademicYear::orderByDesc('year')->get(['id', 'year', 'semester']),
             'active_year' => $activeYear,
             'point_summary' => $pointSummary,
@@ -107,5 +107,13 @@ class StudentViolationController extends Controller
         $studentViolation->delete();
 
         return back()->with('success', 'Catatan pelanggaran dihapus.');
+    }
+
+    public function destroyBulk(Request $request): RedirectResponse
+    {
+        $ids = $request->validate(['ids' => 'required|array|min:1', 'ids.*' => 'integer'])['ids'];
+        StudentViolation::whereIn('id', $ids)->delete();
+
+        return back()->with('success', count($ids).' catatan pelanggaran berhasil dihapus.');
     }
 }

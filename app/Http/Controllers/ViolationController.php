@@ -75,4 +75,12 @@ class ViolationController extends Controller
 
         return back()->with('success', 'Jenis pelanggaran dihapus.');
     }
+
+    public function destroyBulk(Request $request): RedirectResponse
+    {
+        $ids = $request->validate(['ids' => 'required|array|min:1', 'ids.*' => 'integer'])['ids'];
+        Violation::whereIn('id', $ids)->delete();
+
+        return back()->with('success', count($ids).' jenis pelanggaran berhasil dihapus.');
+    }
 }

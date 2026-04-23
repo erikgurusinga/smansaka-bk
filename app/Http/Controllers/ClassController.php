@@ -78,4 +78,12 @@ class ClassController extends Controller
 
         return back()->with('success', 'Kelas berhasil dihapus.');
     }
+
+    public function destroyBulk(Request $request): RedirectResponse
+    {
+        $ids = $request->validate(['ids' => 'required|array|min:1', 'ids.*' => 'integer'])['ids'];
+        SchoolClass::whereIn('id', $ids)->delete();
+
+        return back()->with('success', count($ids).' kelas berhasil dihapus.');
+    }
 }

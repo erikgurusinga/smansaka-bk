@@ -33,6 +33,8 @@ interface NavItem {
     label: string;
     href?: string;
     icon: ReactNode;
+    iconBg?: string;
+    childIconColor?: string;
     permission?: string;
     children?: NavItem[];
 }
@@ -42,11 +44,14 @@ const navigation: NavItem[] = [
         label: 'Dashboard',
         href: '/dashboard',
         icon: <LayoutDashboard className="h-4 w-4" />,
+        iconBg: 'bg-primary-100 text-primary-600',
         permission: 'dashboard',
     },
     {
         label: 'Master Data',
         icon: <Users className="h-4 w-4" />,
+        iconBg: 'bg-violet-100 text-violet-600',
+        childIconColor: 'text-violet-400',
         children: [
             {
                 label: 'Siswa Asuh',
@@ -89,6 +94,8 @@ const navigation: NavItem[] = [
     {
         label: 'Layanan BK',
         icon: <MessageCircle className="h-4 w-4" />,
+        iconBg: 'bg-emerald-100 text-emerald-600',
+        childIconColor: 'text-emerald-400',
         children: [
             {
                 label: 'Konseling Individual',
@@ -119,6 +126,8 @@ const navigation: NavItem[] = [
     {
         label: 'Kasus & Pelanggaran',
         icon: <AlertTriangle className="h-4 w-4" />,
+        iconBg: 'bg-orange-100 text-orange-600',
+        childIconColor: 'text-orange-400',
         children: [
             {
                 label: 'Buku Kasus',
@@ -155,6 +164,8 @@ const navigation: NavItem[] = [
     {
         label: 'Instrumen',
         icon: <FileQuestion className="h-4 w-4" />,
+        iconBg: 'bg-amber-100 text-amber-700',
+        childIconColor: 'text-amber-500',
         children: [
             {
                 label: 'AKPD',
@@ -185,6 +196,8 @@ const navigation: NavItem[] = [
     {
         label: 'Program BK',
         icon: <FileText className="h-4 w-4" />,
+        iconBg: 'bg-blue-100 text-blue-600',
+        childIconColor: 'text-blue-400',
         children: [
             {
                 label: 'RPL BK',
@@ -210,6 +223,7 @@ const navigation: NavItem[] = [
         label: 'Laporan',
         href: '/reports',
         icon: <BarChart3 className="h-4 w-4" />,
+        iconBg: 'bg-rose-100 text-rose-600',
         permission: 'reports',
     },
 ];
@@ -219,6 +233,7 @@ const settingsNav: NavItem[] = [
         label: 'Sistem',
         href: '/system',
         icon: <Settings className="h-4 w-4" />,
+        iconBg: 'bg-slate-100 text-slate-500',
         permission: 'system',
     },
 ];
@@ -433,7 +448,8 @@ function NavNode({
     canSee: (p?: string) => boolean;
     isActive: (h?: string) => boolean;
 }) {
-    const [open, setOpen] = useState(true);
+    const hasActiveChild = item.children?.some((c) => isActive(c.href)) ?? false;
+    const [open, setOpen] = useState(hasActiveChild);
 
     if (item.children) {
         const visible = item.children.filter((c) => canSee(c.permission));
@@ -446,7 +462,14 @@ function NavNode({
                     className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-sm text-neutral-600 hover:bg-neutral-50"
                 >
                     <span className="flex items-center gap-2 font-medium">
-                        {item.icon}
+                        <span
+                            className={cn(
+                                'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg',
+                                item.iconBg ?? 'bg-neutral-100 text-neutral-500',
+                            )}
+                        >
+                            {item.icon}
+                        </span>
                         {item.label}
                     </span>
                     <ChevronDown className={cn('h-4 w-4 transition', open && 'rotate-180')} />
@@ -454,7 +477,12 @@ function NavNode({
                 {open && (
                     <div className="mt-1 ml-3 space-y-0.5 border-l border-neutral-100 pl-3">
                         {visible.map((c) => (
-                            <NavLink key={c.label} item={c} active={isActive(c.href)} />
+                            <NavLink
+                                key={c.label}
+                                item={c}
+                                active={isActive(c.href)}
+                                childIconColor={item.childIconColor}
+                            />
                         ))}
                     </div>
                 )}
@@ -467,7 +495,15 @@ function NavNode({
     return <NavLink item={item} active={isActive(item.href)} />;
 }
 
-function NavLink({ item, active }: { item: NavItem; active: boolean }) {
+function NavLink({
+    item,
+    active,
+    childIconColor,
+}: {
+    item: NavItem;
+    active: boolean;
+    childIconColor?: string;
+}) {
     return (
         <Link
             href={item.href ?? '#'}
@@ -478,7 +514,22 @@ function NavLink({ item, active }: { item: NavItem; active: boolean }) {
                     : 'text-neutral-700 hover:bg-neutral-50',
             )}
         >
-            {item.icon}
+            {item.iconBg ? (
+                <span
+                    className={cn(
+                        'flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg',
+                        active ? 'bg-white/20 text-white' : item.iconBg,
+                    )}
+                >
+                    {item.icon}
+                </span>
+            ) : (
+                <span
+                    className={cn(active ? 'text-white' : (childIconColor ?? 'text-neutral-400'))}
+                >
+                    {item.icon}
+                </span>
+            )}
             <span className="truncate">{item.label}</span>
         </Link>
     );

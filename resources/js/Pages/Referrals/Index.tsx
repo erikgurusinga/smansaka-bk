@@ -2,6 +2,7 @@ import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Plus, Eye, Trash2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState } from 'react';
+import { useSelection } from '@/hooks/useSelection';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/Components/ui/Button';
 import { Badge } from '@/Components/ui/Badge';
@@ -12,8 +13,10 @@ import { Select } from '@/Components/ui/Select';
 import { EmptyState } from '@/Components/ui/EmptyState';
 import { DeleteModal } from '@/Components/ui/DeleteModal';
 import { PageProps, Referral, AcademicYear, PaginatedData } from '@/types';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
+import { FormErrorModal } from '@/Components/ui/FormErrorModal';
+import { useFormError } from '@/hooks/useFormError';
 
 interface Props extends PageProps {
     records: PaginatedData<Referral>;
@@ -44,9 +47,10 @@ const statusLabel = (s: string) =>
         selesai: 'Selesai',
     })[s] ?? s;
 
-const fmt = (d: string) => format(new Date(d), 'd MMM yyyy', { locale: idLocale });
+const fmt = (d: string) => format(parseISO(d.slice(0, 10)), 'd MMM yyyy', { locale: idLocale });
 
 export default function ReferralsIndex({ records, academic_years, filters, permissions }: Props) {
+    const { errorOpen, setErrorOpen, formErrors, handleError } = useFormError();
     const { flash } = usePage<Props>().props;
 
     const [deleteModal, setDeleteModal] = useState<{
@@ -54,13 +58,15 @@ export default function ReferralsIndex({ records, academic_years, filters, permi
         item: Referral | null;
     }>({ open: false, item: null });
     const [processing, setProcessing] = useState(false);
+    const { selected, toggle, togglePage, clearSelection, isAllPageSelected } = useSelection();
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
     const canWrite = permissions['referrals']?.write;
 
     const handleFilter = (key: string, value: string) => {
         router.get(
             route('referrals.index'),
-            { ...filters, [key]: value, page: 1 },
+            { ...filters, [key]: value, ...(key !== 'page' && { page: 1 }) },
             { preserveState: true, replace: true },
         );
     };
@@ -73,7 +79,21 @@ export default function ReferralsIndex({ records, academic_years, filters, permi
                 setDeleteModal({ open: false, item: null });
                 toast.success('Referral dihapus.');
             },
-            onError: () => toast.error('Terjadi kesalahan.'),
+            onError: handleError,
+            onFinish: () => setProcessing(false),
+        });
+    };
+
+    const confirmBulkDelete = () => {
+        setProcessing(true);
+        router.delete(route('referrals.bulk-destroy'), {
+            data: { ids: Array.from(selected) },
+            onSuccess: () => {
+                setBulkDeleteOpen(false);
+                clearSelection();
+                toast.success(`${selected.size} item dihapus.`);
+            },
+            onError: handleError,
             onFinish: () => setProcessing(false),
         });
     };
@@ -98,14 +118,22 @@ export default function ReferralsIndex({ records, academic_years, filters, permi
                             Rujukan ke psikolog, puskesmas, atau dinas
                         </p>
                     </div>
-                    {canWrite && (
-                        <Link href={route('referrals.create')}>
-                            <Button>
-                                <Plus className="h-4 w-4" />
-                                Buat Referral
+                    <div className="flex gap-2">
+                        {canWrite && selected.size > 0 && (
+                            <Button variant="danger" onClick={() => setBulkDeleteOpen(true)}>
+                                <Trash2 className="h-4 w-4" />
+                                Hapus {selected.size} terpilih
                             </Button>
-                        </Link>
-                    )}
+                        )}
+                        {canWrite && (
+                            <Link href={route('referrals.create')}>
+                                <Button>
+                                    <Plus className="h-4 w-4" />
+                                    Buat Referral
+                                </Button>
+                            </Link>
+                        )}
+                    </div>
                 </div>
 
                 <div className="rounded-2xl bg-white shadow-sm ring-1 ring-neutral-100">
@@ -152,6 +180,18 @@ export default function ReferralsIndex({ records, academic_years, filters, permi
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-neutral-100 bg-neutral-50 text-left text-xs font-medium tracking-wide text-neutral-500 uppercase">
+                                    <th className="w-10 px-4 py-3">
+                                        <input
+                                            type="checkbox"
+                                            className="text-primary-600 h-4 w-4 rounded border-neutral-300"
+                                            checked={isAllPageSelected(
+                                                records.data.map((i) => i.id),
+                                            )}
+                                            onChange={() =>
+                                                togglePage(records.data.map((i) => i.id))
+                                            }
+                                        />
+                                    </th>
                                     <th className="px-4 py-3">Siswa</th>
                                     <th className="px-4 py-3">Dirujuk Ke</th>
                                     <th className="px-4 py-3">Tanggal</th>
@@ -163,13 +203,21 @@ export default function ReferralsIndex({ records, academic_years, filters, permi
                             <tbody className="divide-y divide-neutral-50">
                                 {records.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6}>
+                                        <td colSpan={7}>
                                             <EmptyState description="Belum ada catatan referral." />
                                         </td>
                                     </tr>
                                 ) : (
                                     records.data.map((item) => (
                                         <tr key={item.id} className="hover:bg-neutral-50/50">
+                                            <td className="px-4 py-2">
+                                                <input
+                                                    type="checkbox"
+                                                    className="text-primary-600 h-4 w-4 rounded border-neutral-300"
+                                                    checked={selected.has(item.id)}
+                                                    onChange={() => toggle(item.id)}
+                                                />
+                                            </td>
                                             <td className="px-4 py-3">
                                                 <p className="font-medium text-neutral-900">
                                                     {item.student?.name ?? '—'}
@@ -250,6 +298,16 @@ export default function ReferralsIndex({ records, academic_years, filters, permi
                 onConfirm={confirmDelete}
                 loading={processing}
             />
+
+            <DeleteModal
+                open={bulkDeleteOpen}
+                onOpenChange={setBulkDeleteOpen}
+                title="Hapus Data Terpilih"
+                description={`Yakin ingin menghapus ${selected.size} item? Tindakan ini tidak dapat dibatalkan.`}
+                onConfirm={confirmBulkDelete}
+                loading={processing}
+            />
+            <FormErrorModal open={errorOpen} onOpenChange={setErrorOpen} errors={formErrors} />
         </AuthenticatedLayout>
     );
 }

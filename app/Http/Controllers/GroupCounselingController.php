@@ -5,7 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\AcademicYear;
 use App\Models\CounselingParticipant;
 use App\Models\CounselingSession;
-use App\Models\Student;
+use App\Models\SchoolClass;
+use App\Models\StudentGuidance;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -46,10 +47,44 @@ class GroupCounselingController extends Controller
         ]);
     }
 
+    private function mediaItems(CounselingSession $session): array
+    {
+        return $session->getMedia('documentation')
+            ->map(fn ($m) => ['id' => $m->id, 'url' => $m->getUrl(), 'name' => $m->file_name])
+            ->values()
+            ->toArray();
+    }
+
+    private function agreementItem(CounselingSession $session): ?array
+    {
+        $media = $session->getFirstMedia('agreements');
+
+        return $media ? ['id' => $media->id, 'url' => $media->getUrl(), 'name' => $media->file_name] : null;
+    }
+
     public function create(): Response
     {
+        $user = Auth::user();
+        $slugs = $user->groupSlugs();
+        $isGuruBk = in_array('guru-bk', $slugs)
+            && ! $user->isSuperAdmin()
+            && ! in_array('koordinator-bk', $slugs);
+
+        if ($isGuruBk) {
+            $classIds = StudentGuidance::where('user_id', $user->id)
+                ->join('students', 'students.id', '=', 'student_guidance.student_id')
+                ->distinct()
+                ->pluck('students.class_id');
+
+            $classes = SchoolClass::whereIn('id', $classIds)
+                ->orderBy('level')->orderBy('name')
+                ->get(['id', 'name', 'level']);
+        } else {
+            $classes = SchoolClass::orderBy('level')->orderBy('name')->get(['id', 'name', 'level']);
+        }
+
         return Inertia::render('Counseling/Group/Create', [
-            'students' => Student::where('status', 'aktif')->orderBy('name')->get(['id', 'nis', 'name', 'class_id']),
+            'classes' => $classes,
             'academic_year' => AcademicYear::where('is_active', true)->first(),
         ]);
     }
@@ -69,10 +104,13 @@ class GroupCounselingController extends Controller
             'next_plan' => 'nullable|string',
             'status' => 'required|in:dijadwalkan,berlangsung,selesai,dibatalkan',
             'is_confidential' => 'boolean',
+            'documentation' => 'nullable|array|max:2',
+            'documentation.*' => 'image|mimes:jpg,jpeg,png,webp|max:2048',
+            'agreement' => 'nullable|file|mimes:pdf|max:5120',
         ]);
 
         $studentIds = $data['student_ids'];
-        unset($data['student_ids']);
+        unset($data['student_ids'], $data['documentation'], $data['agreement']);
 
         $data['type'] = 'group';
         $data['counselor_id'] = Auth::id();
@@ -86,31 +124,60 @@ class GroupCounselingController extends Controller
             ]);
         }
 
+        foreach ($request->file('documentation', []) as $file) {
+            $session->addMedia($file)->toMediaCollection('documentation');
+        }
+
+        if ($request->hasFile('agreement')) {
+            $session->addMedia($request->file('agreement'))->toMediaCollection('agreements');
+        }
+
         return redirect()->route('counseling.group.index')
             ->with('success', 'Sesi konseling kelompok dicatat.');
     }
 
-    public function show(CounselingSession $counselingSession): Response
+    public function show(CounselingSession $session): Response
     {
-        $counselingSession->load(['students.schoolClass', 'counselor', 'academicYear']);
+        $session->load(['students.schoolClass', 'students.media', 'counselor', 'academicYear']);
 
         return Inertia::render('Counseling/Group/Show', [
-            'session' => $counselingSession,
+            'session' => $session,
+            'documentation' => $this->mediaItems($session),
+            'agreement' => $this->agreementItem($session),
+            'student_photos' => $session->students->mapWithKeys(fn ($s) => [$s->id => $s->getFirstMediaUrl('photo') ?: null]),
         ]);
     }
 
-    public function edit(CounselingSession $counselingSession): Response
+    public function edit(CounselingSession $session): Response
     {
-        $counselingSession->load(['students', 'academicYear']);
+        $session->load(['students.schoolClass', 'academicYear']);
+
+        $user = Auth::user();
+        $slugs = $user->groupSlugs();
+        $isGuruBk = in_array('guru-bk', $slugs)
+            && ! $user->isSuperAdmin()
+            && ! in_array('koordinator-bk', $slugs);
+
+        if ($isGuruBk) {
+            $classIds = StudentGuidance::where('user_id', $user->id)
+                ->join('students', 'students.id', '=', 'student_guidance.student_id')
+                ->distinct()
+                ->pluck('students.class_id');
+            $classes = SchoolClass::whereIn('id', $classIds)
+                ->orderBy('level')->orderBy('name')->get(['id', 'name', 'level']);
+        } else {
+            $classes = SchoolClass::orderBy('level')->orderBy('name')->get(['id', 'name', 'level']);
+        }
 
         return Inertia::render('Counseling/Group/Edit', [
-            'session' => $counselingSession,
-            'students' => Student::where('status', 'aktif')->orderBy('name')->get(['id', 'nis', 'name', 'class_id']),
-            'academic_years' => AcademicYear::orderByDesc('year')->get(['id', 'year', 'semester']),
+            'session' => $session,
+            'classes' => $classes,
+            'documentation' => $this->mediaItems($session),
+            'agreement' => $this->agreementItem($session),
         ]);
     }
 
-    public function update(Request $request, CounselingSession $counselingSession): RedirectResponse
+    public function update(Request $request, CounselingSession $session): RedirectResponse
     {
         $data = $request->validate([
             'student_ids' => 'required|array|min:2',
@@ -124,30 +191,63 @@ class GroupCounselingController extends Controller
             'next_plan' => 'nullable|string',
             'status' => 'required|in:dijadwalkan,berlangsung,selesai,dibatalkan',
             'is_confidential' => 'boolean',
+            'delete_media_ids' => 'nullable|array',
+            'delete_media_ids.*' => 'integer',
+            'documentation' => 'nullable|array',
+            'documentation.*' => 'image|mimes:jpg,jpeg,png,webp|max:2048',
+            'delete_agreement' => 'nullable|boolean',
+            'agreement' => 'nullable|file|mimes:pdf|max:5120',
         ]);
 
         $studentIds = $data['student_ids'];
-        unset($data['student_ids']);
+        $session->update(\Arr::except($data, ['student_ids', 'delete_media_ids', 'documentation', 'delete_agreement', 'agreement']));
 
-        $counselingSession->update($data);
-
-        // Sync participants
-        $counselingSession->participants()->delete();
+        $session->participants()->delete();
         foreach ($studentIds as $studentId) {
             CounselingParticipant::create([
-                'counseling_session_id' => $counselingSession->id,
+                'counseling_session_id' => $session->id,
                 'student_id' => $studentId,
             ]);
         }
 
-        return back()->with('success', 'Sesi konseling kelompok diperbarui.');
+        foreach ($request->input('delete_media_ids', []) as $mediaId) {
+            $session->media()->where('id', $mediaId)->first()?->delete();
+        }
+
+        $remaining = $session->getMedia('documentation')->count();
+        foreach ($request->file('documentation', []) as $file) {
+            if ($remaining >= 2) {
+                break;
+            }
+            $session->addMedia($file)->toMediaCollection('documentation');
+            $remaining++;
+        }
+
+        if ($request->boolean('delete_agreement')) {
+            $session->getFirstMedia('agreements')?->delete();
+        }
+
+        if ($request->hasFile('agreement')) {
+            $session->addMedia($request->file('agreement'))->toMediaCollection('agreements');
+        }
+
+        return redirect()->route('counseling.group.show', $session)
+            ->with('success', 'Sesi konseling kelompok diperbarui.');
     }
 
-    public function destroy(CounselingSession $counselingSession): RedirectResponse
+    public function destroy(CounselingSession $session): RedirectResponse
     {
-        $counselingSession->delete();
+        $session->delete();
 
         return redirect()->route('counseling.group.index')
             ->with('success', 'Sesi konseling kelompok dihapus.');
+    }
+
+    public function destroyBulk(Request $request): RedirectResponse
+    {
+        $ids = $request->validate(['ids' => 'required|array|min:1', 'ids.*' => 'integer'])['ids'];
+        CounselingSession::whereIn('id', $ids)->where('type', 'group')->delete();
+
+        return back()->with('success', count($ids).' sesi konseling kelompok berhasil dihapus.');
     }
 }

@@ -44,6 +44,14 @@ class ClassicalGuidanceController extends Controller
         ]);
     }
 
+    public function create(): Response
+    {
+        return Inertia::render('Counseling/Classical/Create', [
+            'classes' => SchoolClass::orderBy('level')->orderBy('name')->get(['id', 'name', 'level']),
+            'academic_year' => AcademicYear::where('is_active', true)->first(),
+        ]);
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
@@ -55,13 +63,64 @@ class ClassicalGuidanceController extends Controller
             'method' => 'nullable|string|max:100',
             'evaluation' => 'nullable|string',
             'duration_minutes' => 'nullable|integer|min:1|max:480',
+            'documentation' => 'nullable|array|max:2',
+            'documentation.*' => 'image|mimes:jpg,jpeg,png,webp|max:2048',
+            'agreement' => 'nullable|file|mimes:pdf|max:5120',
         ]);
 
         $data['counselor_id'] = Auth::id();
+        unset($data['documentation'], $data['agreement']);
 
-        ClassicalGuidance::create($data);
+        $record = ClassicalGuidance::create($data);
 
-        return back()->with('success', 'Bimbingan klasikal dicatat.');
+        foreach ($request->file('documentation', []) as $file) {
+            $record->addMedia($file)->toMediaCollection('documentation');
+        }
+
+        if ($request->hasFile('agreement')) {
+            $record->addMedia($request->file('agreement'))->toMediaCollection('agreements');
+        }
+
+        return redirect()->route('counseling.classical.show', $record)
+            ->with('success', 'Bimbingan klasikal dicatat.');
+    }
+
+    private function mediaItems(ClassicalGuidance $record): array
+    {
+        return $record->getMedia('documentation')
+            ->map(fn ($m) => ['id' => $m->id, 'url' => $m->getUrl(), 'name' => $m->file_name])
+            ->values()
+            ->toArray();
+    }
+
+    private function agreementItem(ClassicalGuidance $record): ?array
+    {
+        $media = $record->getFirstMedia('agreements');
+
+        return $media ? ['id' => $media->id, 'url' => $media->getUrl(), 'name' => $media->file_name] : null;
+    }
+
+    public function show(ClassicalGuidance $classicalGuidance): Response
+    {
+        $classicalGuidance->load(['counselor', 'schoolClass', 'academicYear']);
+
+        return Inertia::render('Counseling/Classical/Show', [
+            'record' => $classicalGuidance,
+            'documentation' => $this->mediaItems($classicalGuidance),
+            'agreement' => $this->agreementItem($classicalGuidance),
+        ]);
+    }
+
+    public function edit(ClassicalGuidance $classicalGuidance): Response
+    {
+        $classicalGuidance->load(['schoolClass', 'academicYear']);
+
+        return Inertia::render('Counseling/Classical/Edit', [
+            'record' => $classicalGuidance,
+            'classes' => SchoolClass::orderBy('level')->orderBy('name')->get(['id', 'name', 'level']),
+            'documentation' => $this->mediaItems($classicalGuidance),
+            'agreement' => $this->agreementItem($classicalGuidance),
+        ]);
     }
 
     public function update(Request $request, ClassicalGuidance $classicalGuidance): RedirectResponse
@@ -73,17 +132,54 @@ class ClassicalGuidanceController extends Controller
             'method' => 'nullable|string|max:100',
             'evaluation' => 'nullable|string',
             'duration_minutes' => 'nullable|integer|min:1|max:480',
+            'delete_media_ids' => 'nullable|array',
+            'delete_media_ids.*' => 'integer',
+            'documentation' => 'nullable|array',
+            'documentation.*' => 'image|mimes:jpg,jpeg,png,webp|max:2048',
+            'delete_agreement' => 'nullable|boolean',
+            'agreement' => 'nullable|file|mimes:pdf|max:5120',
         ]);
 
-        $classicalGuidance->update($data);
+        $classicalGuidance->update(\Arr::except($data, ['delete_media_ids', 'documentation', 'delete_agreement', 'agreement']));
 
-        return back()->with('success', 'Bimbingan klasikal diperbarui.');
+        foreach ($request->input('delete_media_ids', []) as $mediaId) {
+            $classicalGuidance->media()->where('id', $mediaId)->first()?->delete();
+        }
+
+        $remaining = $classicalGuidance->getMedia('documentation')->count();
+        foreach ($request->file('documentation', []) as $file) {
+            if ($remaining >= 2) {
+                break;
+            }
+            $classicalGuidance->addMedia($file)->toMediaCollection('documentation');
+            $remaining++;
+        }
+
+        if ($request->boolean('delete_agreement')) {
+            $classicalGuidance->getFirstMedia('agreements')?->delete();
+        }
+
+        if ($request->hasFile('agreement')) {
+            $classicalGuidance->addMedia($request->file('agreement'))->toMediaCollection('agreements');
+        }
+
+        return redirect()->route('counseling.classical.show', $classicalGuidance)
+            ->with('success', 'Bimbingan klasikal diperbarui.');
     }
 
     public function destroy(ClassicalGuidance $classicalGuidance): RedirectResponse
     {
         $classicalGuidance->delete();
 
-        return back()->with('success', 'Catatan bimbingan klasikal dihapus.');
+        return redirect()->route('counseling.classical.index')
+            ->with('success', 'Catatan bimbingan klasikal dihapus.');
+    }
+
+    public function destroyBulk(Request $request): RedirectResponse
+    {
+        $ids = $request->validate(['ids' => 'required|array|min:1', 'ids.*' => 'integer'])['ids'];
+        ClassicalGuidance::whereIn('id', $ids)->delete();
+
+        return back()->with('success', count($ids).' bimbingan klasikal berhasil dihapus.');
     }
 }

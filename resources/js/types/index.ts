@@ -26,6 +26,9 @@ export interface AcademicYear {
     semester: 'ganjil' | 'genap';
     start_date: string;
     end_date: string;
+    is_active: boolean;
+    is_closed: boolean;
+    notes?: string | null;
 }
 
 export interface SchoolClass {
@@ -48,6 +51,7 @@ export interface Teacher {
     is_bk: boolean;
     user_id: number | null;
     user?: User;
+    photo_url?: string | null;
 }
 
 export interface Student {
@@ -77,6 +81,7 @@ export interface Guardian {
     address: string | null;
     students?: Student[];
     students_count?: number;
+    photo_url?: string | null;
 }
 
 export interface Violation {
@@ -168,6 +173,9 @@ export interface HomeVisit {
     counselor_id: number;
     academic_year_id: number;
     date: string;
+    location: string | null;
+    address: string | null;
+    companions: { name: string; role: string }[] | null;
     purpose: string;
     findings: string | null;
     action_plan: string | null;

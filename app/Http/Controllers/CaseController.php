@@ -4,7 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\AcademicYear;
 use App\Models\CaseRecord;
-use App\Models\Student;
+use App\Models\SchoolClass;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -55,8 +55,7 @@ class CaseController extends Controller
     public function create(): Response
     {
         return Inertia::render('Cases/Create', [
-            'students' => Student::where('status', 'aktif')->orderBy('name')
-                ->get(['id', 'nis', 'name', 'class_id']),
+            'classes' => SchoolClass::orderBy('level')->orderBy('name')->get(['id', 'name', 'level']),
             'academic_year' => AcademicYear::where('is_active', true)->first(),
         ]);
     }
@@ -95,10 +94,11 @@ class CaseController extends Controller
             abort(403, 'Anda tidak memiliki akses ke catatan ini.');
         }
 
-        $case->load(['student.schoolClass', 'reporter', 'academicYear']);
+        $case->load(['student.schoolClass', 'student.media', 'reporter', 'academicYear']);
 
         return Inertia::render('Cases/Show', [
             'case' => $case,
+            'student_photo' => $case->student?->getFirstMediaUrl('photo') ?: null,
         ]);
     }
 
@@ -138,5 +138,13 @@ class CaseController extends Controller
         $case->delete();
 
         return redirect()->route('cases.index')->with('success', 'Kasus dihapus.');
+    }
+
+    public function destroyBulk(Request $request): RedirectResponse
+    {
+        $ids = $request->validate(['ids' => 'required|array|min:1', 'ids.*' => 'integer'])['ids'];
+        CaseRecord::whereIn('id', $ids)->delete();
+
+        return back()->with('success', count($ids).' kasus berhasil dihapus.');
     }
 }

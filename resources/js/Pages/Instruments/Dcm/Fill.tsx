@@ -6,6 +6,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/Components/ui/Button';
 import { Badge } from '@/Components/ui/Badge';
 import { PageProps, Student, AcademicYear, DcmItem } from '@/types';
+import { FormErrorModal } from '@/Components/ui/FormErrorModal';
+import { useFormError } from '@/hooks/useFormError';
 
 interface Props extends PageProps {
     student: Student;
@@ -15,6 +17,7 @@ interface Props extends PageProps {
 }
 
 export default function DcmFill({ student, items, responses, academic_year }: Props) {
+    const { errorOpen, setErrorOpen, formErrors, handleError } = useFormError();
     const [answers, setAnswers] = useState<Record<number, boolean>>(responses ?? {});
     const [processing, setProcessing] = useState(false);
     const [activeTopic, setActiveTopic] = useState<string | null>(null);
@@ -51,7 +54,7 @@ export default function DcmFill({ student, items, responses, academic_year }: Pr
             { academic_year_id: academic_year.id, answers: payload },
             {
                 onSuccess: () => toast.success('Jawaban tersimpan.'),
-                onError: () => toast.error('Gagal menyimpan.'),
+                onError: handleError,
                 onFinish: () => setProcessing(false),
             },
         );
@@ -166,6 +169,7 @@ export default function DcmFill({ student, items, responses, academic_year }: Pr
                     </div>
                 </div>
             </div>
+            <FormErrorModal open={errorOpen} onOpenChange={setErrorOpen} errors={formErrors} />
         </AuthenticatedLayout>
     );
 }

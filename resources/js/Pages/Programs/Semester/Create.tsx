@@ -10,6 +10,8 @@ import { Select } from '@/Components/ui/Select';
 import { Textarea } from '@/Components/ui/Textarea';
 import { Badge } from '@/Components/ui/Badge';
 import { PageProps, AnnualProgram, RplBk } from '@/types';
+import { FormErrorModal } from '@/Components/ui/FormErrorModal';
+import { useFormError } from '@/hooks/useFormError';
 
 interface ScheduleItem {
     month: number;
@@ -44,6 +46,7 @@ const MONTHS_GENAP = [
 ];
 
 export default function SemesterCreate({ annual, rpls, suggested_semester }: Props) {
+    const { errorOpen, setErrorOpen, formErrors, handleError } = useFormError();
     const [semester, setSemester] = useState<'ganjil' | 'genap'>(suggested_semester);
     const [title, setTitle] = useState(
         `Program Semester ${suggested_semester === 'ganjil' ? 'Ganjil' : 'Genap'} — ${annual.title}`,
@@ -100,7 +103,7 @@ export default function SemesterCreate({ annual, rpls, suggested_semester }: Pro
             },
             {
                 onSuccess: () => toast.success('Program semester dibuat.'),
-                onError: () => toast.error('Terjadi kesalahan.'),
+                onError: handleError,
                 onFinish: () => setProcessing(false),
             },
         );
@@ -277,6 +280,7 @@ export default function SemesterCreate({ annual, rpls, suggested_semester }: Pro
                     </Button>
                 </div>
             </div>
+            <FormErrorModal open={errorOpen} onOpenChange={setErrorOpen} errors={formErrors} />
         </AuthenticatedLayout>
     );
 }

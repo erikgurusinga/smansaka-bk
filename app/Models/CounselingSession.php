@@ -6,9 +6,13 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
-class CounselingSession extends Model
+class CounselingSession extends Model implements HasMedia
 {
+    use InteractsWithMedia;
+
     protected $fillable = [
         'type', 'counselor_id', 'academic_year_id',
         'date', 'start_time', 'duration_minutes',
@@ -40,5 +44,15 @@ class CounselingSession extends Model
     public function students(): BelongsToMany
     {
         return $this->belongsToMany(Student::class, 'counseling_participants');
+    }
+
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('documentation')
+            ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp']);
+
+        $this->addMediaCollection('agreements')
+            ->singleFile()
+            ->acceptsMimeTypes(['application/pdf']);
     }
 }

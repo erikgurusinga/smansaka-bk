@@ -4,9 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\MediaLibrary\HasMedia;
+use Spatie\MediaLibrary\InteractsWithMedia;
 
-class Referral extends Model
+class Referral extends Model implements HasMedia
 {
+    use InteractsWithMedia;
+
     protected $fillable = [
         'student_id', 'case_id', 'counselor_id', 'academic_year_id',
         'referred_to', 'reason', 'date', 'notes', 'status',
@@ -34,5 +38,15 @@ class Referral extends Model
     public function academicYear(): BelongsTo
     {
         return $this->belongsTo(AcademicYear::class);
+    }
+
+    public function registerMediaCollections(): void
+    {
+        $this->addMediaCollection('documentation')
+            ->acceptsMimeTypes(['image/jpeg', 'image/png', 'image/webp']);
+
+        $this->addMediaCollection('agreements')
+            ->singleFile()
+            ->acceptsMimeTypes(['application/pdf']);
     }
 }

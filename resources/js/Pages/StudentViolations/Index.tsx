@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
+import { useSelection } from '@/hooks/useSelection';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Trash2, AlertTriangle } from 'lucide-react';
+import { Plus, Pencil, Trash2, AlertTriangle, Search, X } from 'lucide-react';
 import { toast } from 'sonner';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/Components/ui/Button';
@@ -19,16 +20,26 @@ import { Pagination } from '@/Components/ui/Pagination';
 import { PerPageSelect } from '@/Components/ui/PerPageSelect';
 import { SearchInput } from '@/Components/ui/SearchInput';
 import { EmptyState } from '@/Components/ui/EmptyState';
-import {
-    PageProps,
-    StudentViolation,
-    Violation,
-    Student,
-    AcademicYear,
-    PaginatedData,
-} from '@/types';
-import { format } from 'date-fns';
+import { PageProps, StudentViolation, Violation, AcademicYear, PaginatedData } from '@/types';
+
+interface SchoolClassOption {
+    id: number;
+    name: string;
+    level: string;
+}
+interface StudentResult {
+    id: number;
+    nis: string;
+    name: string;
+    gender: string;
+    status: string;
+    class_name: string | null;
+    photo_url: string;
+}
+import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
+import { FormErrorModal } from '@/Components/ui/FormErrorModal';
+import { useFormError } from '@/hooks/useFormError';
 
 const storeSchema = z.object({
     student_id: z.string().min(1, 'Siswa wajib dipilih'),
@@ -52,7 +63,7 @@ type UpdateData = z.infer<typeof updateSchema>;
 interface Props extends PageProps {
     records: PaginatedData<StudentViolation>;
     violations: Violation[];
-    students: Student[];
+    classes: SchoolClassOption[];
     academic_years: AcademicYear[];
     active_year: AcademicYear | null;
     point_summary: Record<number, number>;
@@ -119,21 +130,71 @@ const pointColor = (pts: number) => {
     return 'text-neutral-700 bg-neutral-100';
 };
 
-const formatDate = (d: string) => format(new Date(d), 'd MMM yyyy', { locale: idLocale });
+const formatDate = (d: string) =>
+    format(parseISO(d.slice(0, 10)), 'd MMM yyyy', { locale: idLocale });
 
 export default function StudentViolationsIndex({
     records,
     violations,
-    students,
+    classes,
     academic_years,
     active_year,
     point_summary,
     filters,
     permissions,
 }: Props) {
+    const { errorOpen, setErrorOpen, formErrors, handleError } = useFormError();
     const { flash } = usePage<Props>().props;
 
     const [createOpen, setCreateOpen] = useState(false);
+
+    // Combobox state for create dialog
+    const [svClassFilter, setSvClassFilter] = useState('');
+    const [svQuery, setSvQuery] = useState('');
+    const [svResults, setSvResults] = useState<StudentResult[]>([]);
+    const [svShowDropdown, setSvShowDropdown] = useState(false);
+    const [svSelectedStudent, setSvSelectedStudent] = useState<StudentResult | null>(null);
+    const svComboRef = useRef<HTMLDivElement>(null);
+
+    const resetCombo = () => {
+        setSvClassFilter('');
+        setSvQuery('');
+        setSvResults([]);
+        setSvShowDropdown(false);
+        setSvSelectedStudent(null);
+    };
+
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (svComboRef.current && !svComboRef.current.contains(e.target as Node))
+                setSvShowDropdown(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    useEffect(() => {
+        if (svQuery.length < 2) {
+            setSvResults([]);
+            setSvShowDropdown(false);
+            return;
+        }
+        const timer = setTimeout(async () => {
+            const params = new URLSearchParams({ q: svQuery });
+            if (svClassFilter) params.set('class_id', svClassFilter);
+            const res = await fetch(`/students/lookup?${params}`);
+            setSvResults(await res.json());
+            setSvShowDropdown(true);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [svQuery, svClassFilter]);
+
+    const svSelectStudent = (s: StudentResult) => {
+        setSvSelectedStudent(s);
+        createForm.setValue('student_id', String(s.id));
+        setSvQuery('');
+        setSvShowDropdown(false);
+    };
     const [editModal, setEditModal] = useState<{ open: boolean; item: StudentViolation | null }>({
         open: false,
         item: null,
@@ -146,12 +207,14 @@ export default function StudentViolationsIndex({
         item: null,
     });
     const [processing, setProcessing] = useState(false);
+    const { selected, toggle, togglePage, clearSelection, isAllPageSelected } = useSelection();
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
     const canWrite = permissions['violations']?.write;
 
-    const studentOptions = [
-        { value: '', label: '— Pilih Siswa —' },
-        ...students.map((s) => ({ value: String(s.id), label: `${s.name} (${s.nis})` })),
+    const svClassOptions = [
+        { value: '', label: 'Semua Kelas' },
+        ...classes.map((c) => ({ value: String(c.id), label: `${c.level} – ${c.name}` })),
     ];
 
     const violationOptions = [
@@ -202,9 +265,10 @@ export default function StudentViolationsIndex({
             onSuccess: () => {
                 setCreateOpen(false);
                 createForm.reset();
+                resetCombo();
                 toast.success('Pelanggaran berhasil dicatat.');
             },
-            onError: () => toast.error('Terjadi kesalahan.'),
+            onError: handleError,
             onFinish: () => setProcessing(false),
         });
     };
@@ -217,7 +281,7 @@ export default function StudentViolationsIndex({
                 setEditModal({ open: false, item: null });
                 toast.success('Data pelanggaran diperbarui.');
             },
-            onError: () => toast.error('Terjadi kesalahan.'),
+            onError: handleError,
             onFinish: () => setProcessing(false),
         });
     };
@@ -234,10 +298,24 @@ export default function StudentViolationsIndex({
         });
     };
 
+    const confirmBulkDelete = () => {
+        setProcessing(true);
+        router.delete(route('student-violations.bulk-destroy'), {
+            data: { ids: Array.from(selected) },
+            onSuccess: () => {
+                setBulkDeleteOpen(false);
+                clearSelection();
+                toast.success(`${selected.size} item dihapus.`);
+            },
+            onError: handleError,
+            onFinish: () => setProcessing(false),
+        });
+    };
+
     const handleFilter = (key: string, value: string) => {
         router.get(
             route('student-violations.index'),
-            { ...filters, [key]: value, page: 1 },
+            { ...filters, [key]: value, ...(key !== 'page' && { page: 1 }) },
             { preserveState: true, replace: true },
         );
     };
@@ -263,10 +341,18 @@ export default function StudentViolationsIndex({
                         </p>
                     </div>
                     {canWrite && (
-                        <Button onClick={() => setCreateOpen(true)}>
-                            <Plus className="h-4 w-4" />
-                            Catat Pelanggaran
-                        </Button>
+                        <div className="flex gap-2">
+                            {selected.size > 0 && (
+                                <Button variant="danger" onClick={() => setBulkDeleteOpen(true)}>
+                                    <Trash2 className="h-4 w-4" />
+                                    Hapus {selected.size} terpilih
+                                </Button>
+                            )}
+                            <Button onClick={() => setCreateOpen(true)}>
+                                <Plus className="h-4 w-4" />
+                                Catat Pelanggaran
+                            </Button>
+                        </div>
                     )}
                 </div>
 
@@ -323,6 +409,18 @@ export default function StudentViolationsIndex({
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-neutral-100 bg-neutral-50 text-left text-xs font-medium tracking-wide text-neutral-500 uppercase">
+                                    <th className="w-10 px-4 py-3">
+                                        <input
+                                            type="checkbox"
+                                            className="text-primary-600 h-4 w-4 rounded border-neutral-300"
+                                            checked={isAllPageSelected(
+                                                records.data.map((i) => i.id),
+                                            )}
+                                            onChange={() =>
+                                                togglePage(records.data.map((i) => i.id))
+                                            }
+                                        />
+                                    </th>
                                     <th className="px-4 py-3">Siswa</th>
                                     <th className="px-4 py-3">Jenis Pelanggaran</th>
                                     <th className="px-4 py-3">Tanggal</th>
@@ -336,7 +434,7 @@ export default function StudentViolationsIndex({
                             <tbody className="divide-y divide-neutral-50">
                                 {records.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={canWrite ? 8 : 7}>
+                                        <td colSpan={canWrite ? 9 : 8}>
                                             <EmptyState description="Belum ada catatan pelanggaran." />
                                         </td>
                                     </tr>
@@ -345,6 +443,14 @@ export default function StudentViolationsIndex({
                                         const totalPts = point_summary[item.student_id] ?? 0;
                                         return (
                                             <tr key={item.id} className="hover:bg-neutral-50/50">
+                                                <td className="px-4 py-2">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="text-primary-600 h-4 w-4 rounded border-neutral-300"
+                                                        checked={selected.has(item.id)}
+                                                        onChange={() => toggle(item.id)}
+                                                    />
+                                                </td>
                                                 <td className="px-4 py-3">
                                                     <p className="font-medium text-neutral-900">
                                                         {item.student?.name ?? '—'}
@@ -450,18 +556,122 @@ export default function StudentViolationsIndex({
             {/* Create Dialog */}
             <Dialog
                 open={createOpen}
-                onOpenChange={setCreateOpen}
+                onOpenChange={(open) => {
+                    if (!open) resetCombo();
+                    setCreateOpen(open);
+                }}
                 title="Catat Pelanggaran Siswa"
                 className="max-w-lg"
             >
                 <form onSubmit={createForm.handleSubmit(onStore)} className="space-y-4">
                     <div className="space-y-1.5">
                         <Label>Siswa</Label>
-                        <Select
-                            value={createForm.watch('student_id') ?? ''}
-                            onValueChange={(v) => createForm.setValue('student_id', v)}
-                            options={studentOptions}
-                        />
+                        {svSelectedStudent ? (
+                            <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+                                {svSelectedStudent.photo_url ? (
+                                    <img
+                                        src={svSelectedStudent.photo_url}
+                                        alt=""
+                                        className="h-8 w-8 rounded-full object-cover"
+                                    />
+                                ) : (
+                                    <div className="bg-primary-100 text-primary-700 flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold">
+                                        {svSelectedStudent.name[0]}
+                                    </div>
+                                )}
+                                <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm font-medium text-neutral-900">
+                                        {svSelectedStudent.name}
+                                    </p>
+                                    <p className="text-xs text-neutral-500">
+                                        {svSelectedStudent.nis}
+                                        {svSelectedStudent.class_name &&
+                                            ` · ${svSelectedStudent.class_name}`}
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setSvSelectedStudent(null);
+                                        createForm.setValue('student_id', '');
+                                        setSvQuery('');
+                                    }}
+                                    className="rounded p-1 text-neutral-400 hover:text-neutral-700"
+                                >
+                                    <X className="h-4 w-4" />
+                                </button>
+                            </div>
+                        ) : (
+                            <div ref={svComboRef} className="space-y-2">
+                                <div className="flex gap-2">
+                                    <Select
+                                        value={svClassFilter}
+                                        onValueChange={(v) => {
+                                            setSvClassFilter(v);
+                                            setSvResults([]);
+                                            setSvShowDropdown(false);
+                                        }}
+                                        options={svClassOptions}
+                                        className="w-40 shrink-0"
+                                    />
+                                    <div className="relative flex-1">
+                                        <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                                        <Input
+                                            placeholder="Ketik nama atau NIS..."
+                                            value={svQuery}
+                                            onChange={(e) => setSvQuery(e.target.value)}
+                                            onFocus={() =>
+                                                svResults.length > 0 && setSvShowDropdown(true)
+                                            }
+                                            className="pl-9"
+                                        />
+                                    </div>
+                                </div>
+                                {svShowDropdown && (
+                                    <div className="rounded-xl border border-neutral-200 bg-white shadow-lg">
+                                        {svResults.length === 0 ? (
+                                            <p className="px-4 py-3 text-sm text-neutral-500">
+                                                Siswa tidak ditemukan.
+                                            </p>
+                                        ) : (
+                                            <ul className="max-h-48 divide-y divide-neutral-50 overflow-y-auto">
+                                                {svResults.map((s) => (
+                                                    <li key={s.id}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => svSelectStudent(s)}
+                                                            className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-neutral-50"
+                                                        >
+                                                            {s.photo_url ? (
+                                                                <img
+                                                                    src={s.photo_url}
+                                                                    alt=""
+                                                                    className="h-8 w-8 shrink-0 rounded-full object-cover"
+                                                                />
+                                                            ) : (
+                                                                <div className="bg-primary-100 text-primary-700 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+                                                                    {s.name[0]}
+                                                                </div>
+                                                            )}
+                                                            <div className="min-w-0">
+                                                                <p className="truncate text-sm font-medium text-neutral-900">
+                                                                    {s.name}
+                                                                </p>
+                                                                <p className="text-xs text-neutral-500">
+                                                                    {s.nis}
+                                                                    {s.class_name &&
+                                                                        ` · ${s.class_name}`}
+                                                                </p>
+                                                            </div>
+                                                        </button>
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         <InputError message={createForm.formState.errors.student_id?.message} />
                     </div>
 
@@ -591,6 +801,16 @@ export default function StudentViolationsIndex({
                 onConfirm={confirmDelete}
                 loading={processing}
             />
+
+            <DeleteModal
+                open={bulkDeleteOpen}
+                onOpenChange={setBulkDeleteOpen}
+                title="Hapus Data Terpilih"
+                description={`Yakin ingin menghapus ${selected.size} item? Tindakan ini tidak dapat dibatalkan.`}
+                onConfirm={confirmBulkDelete}
+                loading={processing}
+            />
+            <FormErrorModal open={errorOpen} onOpenChange={setErrorOpen} errors={formErrors} />
         </AuthenticatedLayout>
     );
 }

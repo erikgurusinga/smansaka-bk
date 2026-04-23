@@ -2,8 +2,8 @@ import { Head, Link, router } from '@inertiajs/react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useState } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { ArrowLeft, Upload, X, FileText, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/Components/ui/Button';
@@ -12,7 +12,24 @@ import { Label } from '@/Components/ui/Label';
 import { InputError } from '@/Components/ui/InputError';
 import { Select } from '@/Components/ui/Select';
 import { Textarea } from '@/Components/ui/Textarea';
-import { PageProps, Student, CaseRecord, AcademicYear } from '@/types';
+import { PageProps, CaseRecord, AcademicYear } from '@/types';
+
+interface SchoolClassOption {
+    id: number;
+    name: string;
+    level: string;
+}
+interface StudentResult {
+    id: number;
+    nis: string;
+    name: string;
+    gender: string;
+    status: string;
+    class_name: string | null;
+    photo_url: string;
+}
+import { FormErrorModal } from '@/Components/ui/FormErrorModal';
+import { useFormError } from '@/hooks/useFormError';
 
 const schema = z.object({
     student_id: z.string().min(1, 'Siswa wajib dipilih'),
@@ -27,7 +44,7 @@ const schema = z.object({
 type FormData = z.infer<typeof schema>;
 
 interface Props extends PageProps {
-    students: Student[];
+    classes: SchoolClassOption[];
     cases: (CaseRecord & { student?: { name: string } })[];
     academic_year: AcademicYear | null;
 }
@@ -39,8 +56,26 @@ const STATUS_OPTIONS = [
     { value: 'selesai', label: 'Selesai' },
 ];
 
-export default function ReferralsCreate({ students, cases, academic_year }: Props) {
+export default function ReferralsCreate({ classes, cases, academic_year }: Props) {
+    const { errorOpen, setErrorOpen, formErrors, handleError } = useFormError();
     const [processing, setProcessing] = useState(false);
+
+    // Student combobox
+    const [classFilter, setClassFilter] = useState('');
+    const [query, setQuery] = useState('');
+    const [results, setResults] = useState<StudentResult[]>([]);
+    const [showDropdown, setShowDropdown] = useState(false);
+    const [selectedStudent, setSelectedStudent] = useState<StudentResult | null>(null);
+    const comboRef = useRef<HTMLDivElement>(null);
+
+    // Photo upload
+    const [photos, setPhotos] = useState<(File | null)[]>([null, null]);
+    const [previews, setPreviews] = useState<(string | null)[]>([null, null]);
+    const fileRefs = [useRef<HTMLInputElement>(null), useRef<HTMLInputElement>(null)];
+
+    // Agreement PDF
+    const [agreementFile, setAgreementFile] = useState<File | null>(null);
+    const agreementRef = useRef<HTMLInputElement>(null);
 
     const {
         register,
@@ -62,9 +97,47 @@ export default function ReferralsCreate({ students, cases, academic_year }: Prop
         },
     });
 
-    const studentOptions = [
-        { value: '', label: '— Pilih Siswa —' },
-        ...students.map((s) => ({ value: String(s.id), label: `${s.name} (${s.nis})` })),
+    useEffect(() => {
+        const handler = (e: MouseEvent) => {
+            if (comboRef.current && !comboRef.current.contains(e.target as Node))
+                setShowDropdown(false);
+        };
+        document.addEventListener('mousedown', handler);
+        return () => document.removeEventListener('mousedown', handler);
+    }, []);
+
+    useEffect(() => {
+        if (query.length < 2) {
+            setResults([]);
+            setShowDropdown(false);
+            return;
+        }
+        const timer = setTimeout(async () => {
+            const params = new URLSearchParams({ q: query });
+            if (classFilter) params.set('class_id', classFilter);
+            const res = await fetch(`/students/lookup?${params}`);
+            setResults(await res.json());
+            setShowDropdown(true);
+        }, 300);
+        return () => clearTimeout(timer);
+    }, [query, classFilter]);
+
+    const selectStudent = (s: StudentResult) => {
+        setSelectedStudent(s);
+        setValue('student_id', String(s.id));
+        setQuery('');
+        setShowDropdown(false);
+    };
+
+    const clearStudent = () => {
+        setSelectedStudent(null);
+        setValue('student_id', '');
+        setQuery('');
+    };
+
+    const classOptions = [
+        { value: '', label: 'Semua Kelas' },
+        ...classes.map((c) => ({ value: String(c.id), label: `${c.level} – ${c.name}` })),
     ];
 
     const caseOptions = [
@@ -75,12 +148,42 @@ export default function ReferralsCreate({ students, cases, academic_year }: Prop
         })),
     ];
 
+    const handlePhotoChange = (idx: number) => (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0] ?? null;
+        if (!file) return;
+        const up = [...photos];
+        up[idx] = file;
+        setPhotos(up);
+        const pp = [...previews];
+        pp[idx] = URL.createObjectURL(file);
+        setPreviews(pp);
+    };
+
+    const removePhoto = (idx: number) => {
+        const up = [...photos];
+        up[idx] = null;
+        setPhotos(up);
+        const pp = [...previews];
+        if (pp[idx]) URL.revokeObjectURL(pp[idx]!);
+        pp[idx] = null;
+        setPreviews(pp);
+        if (fileRefs[idx].current) fileRefs[idx].current!.value = '';
+    };
+
     const onSubmit = (data: FormData) => {
         setProcessing(true);
-        router.post(route('referrals.store'), data, {
+        const fd = new window.FormData();
+        Object.entries(data).forEach(([k, v]) => {
+            if (v !== undefined && v !== null && v !== '') fd.append(k, String(v));
+        });
+        photos.filter(Boolean).forEach((f) => fd.append('documentation[]', f!));
+        if (agreementFile) fd.append('agreement', agreementFile);
+
+        router.post(route('referrals.store'), fd, {
+            forceFormData: true,
             onSuccess: () => toast.success('Referral dicatat.'),
-            onError: () => {
-                toast.error('Terjadi kesalahan.');
+            onError: (errs) => {
+                handleError(errs);
                 setProcessing(false);
             },
         });
@@ -120,11 +223,108 @@ export default function ReferralsCreate({ students, cases, academic_year }: Prop
 
                         <div className="space-y-1.5">
                             <Label>Siswa</Label>
-                            <Select
-                                value={watch('student_id') ?? ''}
-                                onValueChange={(v) => setValue('student_id', v)}
-                                options={studentOptions}
-                            />
+                            {selectedStudent ? (
+                                <div className="flex items-center gap-3 rounded-xl border border-neutral-200 bg-neutral-50 px-3 py-2.5">
+                                    {selectedStudent.photo_url ? (
+                                        <img
+                                            src={selectedStudent.photo_url}
+                                            alt=""
+                                            className="h-8 w-8 rounded-full object-cover"
+                                        />
+                                    ) : (
+                                        <div className="bg-primary-100 text-primary-700 flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold">
+                                            {selectedStudent.name[0]}
+                                        </div>
+                                    )}
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-sm font-medium text-neutral-900">
+                                            {selectedStudent.name}
+                                        </p>
+                                        <p className="text-xs text-neutral-500">
+                                            {selectedStudent.nis}
+                                            {selectedStudent.class_name &&
+                                                ` · ${selectedStudent.class_name}`}
+                                        </p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={clearStudent}
+                                        className="rounded p-1 text-neutral-400 hover:text-neutral-700"
+                                    >
+                                        <X className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            ) : (
+                                <div ref={comboRef} className="space-y-2">
+                                    <div className="flex gap-2">
+                                        <Select
+                                            value={classFilter}
+                                            onValueChange={(v) => {
+                                                setClassFilter(v);
+                                                setResults([]);
+                                                setShowDropdown(false);
+                                            }}
+                                            options={classOptions}
+                                            className="w-44 shrink-0"
+                                        />
+                                        <div className="relative flex-1">
+                                            <Search className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                                            <Input
+                                                placeholder="Ketik nama atau NIS..."
+                                                value={query}
+                                                onChange={(e) => setQuery(e.target.value)}
+                                                onFocus={() =>
+                                                    results.length > 0 && setShowDropdown(true)
+                                                }
+                                                className="pl-9"
+                                            />
+                                        </div>
+                                    </div>
+                                    {showDropdown && (
+                                        <div className="rounded-xl border border-neutral-200 bg-white shadow-lg">
+                                            {results.length === 0 ? (
+                                                <p className="px-4 py-3 text-sm text-neutral-500">
+                                                    Siswa tidak ditemukan.
+                                                </p>
+                                            ) : (
+                                                <ul className="max-h-56 divide-y divide-neutral-50 overflow-y-auto">
+                                                    {results.map((s) => (
+                                                        <li key={s.id}>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => selectStudent(s)}
+                                                                className="flex w-full items-center gap-3 px-4 py-2.5 text-left hover:bg-neutral-50"
+                                                            >
+                                                                {s.photo_url ? (
+                                                                    <img
+                                                                        src={s.photo_url}
+                                                                        alt=""
+                                                                        className="h-8 w-8 shrink-0 rounded-full object-cover"
+                                                                    />
+                                                                ) : (
+                                                                    <div className="bg-primary-100 text-primary-700 flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold">
+                                                                        {s.name[0]}
+                                                                    </div>
+                                                                )}
+                                                                <div className="min-w-0">
+                                                                    <p className="truncate text-sm font-medium text-neutral-900">
+                                                                        {s.name}
+                                                                    </p>
+                                                                    <p className="text-xs text-neutral-500">
+                                                                        {s.nis}
+                                                                        {s.class_name &&
+                                                                            ` · ${s.class_name}`}
+                                                                    </p>
+                                                                </div>
+                                                            </button>
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                             <InputError message={errors.student_id?.message} />
                         </div>
 
@@ -196,6 +396,98 @@ export default function ReferralsCreate({ students, cases, academic_year }: Prop
                         </div>
                     </div>
 
+                    {/* Foto Dokumentasi */}
+                    <div className="space-y-4 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-neutral-100">
+                        <h2 className="text-sm font-semibold tracking-wide text-neutral-700 uppercase">
+                            Foto Dokumentasi
+                        </h2>
+                        <p className="text-xs text-neutral-400">
+                            Maks. 2 foto (jpg/png/webp, maks 2 MB/foto)
+                        </p>
+                        <div className="grid grid-cols-2 gap-3">
+                            {[0, 1].map((idx) => (
+                                <div key={idx}>
+                                    {previews[idx] ? (
+                                        <div className="relative overflow-hidden rounded-xl ring-1 ring-neutral-200">
+                                            <img
+                                                src={previews[idx]!}
+                                                className="h-36 w-full object-cover"
+                                                alt=""
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => removePhoto(idx)}
+                                                className="absolute top-1.5 right-1.5 rounded-full bg-red-600 p-1 text-white shadow hover:bg-red-700"
+                                            >
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <button
+                                            type="button"
+                                            onClick={() => fileRefs[idx].current?.click()}
+                                            className="hover:border-primary-400 hover:text-primary-500 flex h-36 w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-neutral-200 text-neutral-400"
+                                        >
+                                            <Upload className="h-5 w-5" />
+                                            <span className="text-xs">Foto {idx + 1}</span>
+                                        </button>
+                                    )}
+                                    <input
+                                        ref={fileRefs[idx]}
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        className="hidden"
+                                        onChange={handlePhotoChange(idx)}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Dokumen Kesepakatan */}
+                    <div className="space-y-4 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-neutral-100">
+                        <h2 className="text-sm font-semibold tracking-wide text-neutral-700 uppercase">
+                            Dokumen Kesepakatan
+                        </h2>
+                        <p className="text-xs text-neutral-400">PDF, maks. 5 MB</p>
+                        {agreementFile ? (
+                            <div className="flex items-center justify-between rounded-xl bg-blue-50 px-4 py-3 ring-1 ring-blue-100">
+                                <div className="flex items-center gap-3">
+                                    <FileText className="h-5 w-5 shrink-0 text-blue-500" />
+                                    <span className="max-w-xs truncate text-sm font-medium text-blue-800">
+                                        {agreementFile.name}
+                                    </span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setAgreementFile(null);
+                                        if (agreementRef.current) agreementRef.current.value = '';
+                                    }}
+                                    className="rounded-full bg-red-600 p-1 text-white shadow hover:bg-red-700"
+                                >
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </div>
+                        ) : (
+                            <button
+                                type="button"
+                                onClick={() => agreementRef.current?.click()}
+                                className="hover:border-primary-400 hover:text-primary-500 flex w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-neutral-200 py-6 text-neutral-400"
+                            >
+                                <Upload className="h-5 w-5" />
+                                <span className="text-xs">Klik untuk upload PDF kesepakatan</span>
+                            </button>
+                        )}
+                        <input
+                            ref={agreementRef}
+                            type="file"
+                            accept="application/pdf"
+                            className="hidden"
+                            onChange={(e) => setAgreementFile(e.target.files?.[0] ?? null)}
+                        />
+                    </div>
+
                     <input type="hidden" {...register('academic_year_id')} />
 
                     <div className="flex justify-end gap-3">
@@ -210,6 +502,7 @@ export default function ReferralsCreate({ students, cases, academic_year }: Prop
                     </div>
                 </form>
             </div>
+            <FormErrorModal open={errorOpen} onOpenChange={setErrorOpen} errors={formErrors} />
         </AuthenticatedLayout>
     );
 }

@@ -18,6 +18,12 @@ class DatabaseSeeder extends Seeder
             ViolationSeeder::class,
             AkpdItemSeeder::class,
             DcmItemSeeder::class,
+            // Data operasional awal
+            TeacherSeeder::class,
+            SchoolClassSeeder::class,
+            StudentSeeder::class,
+            GuardianSeeder::class,
+            StudentGuidanceSeeder::class,
         ]);
     }
 }

@@ -10,6 +10,8 @@ import { Select } from '@/Components/ui/Select';
 import { Textarea } from '@/Components/ui/Textarea';
 import { Badge } from '@/Components/ui/Badge';
 import { PageProps, AcademicYear, RplBk } from '@/types';
+import { FormErrorModal } from '@/Components/ui/FormErrorModal';
+import { useFormError } from '@/hooks/useFormError';
 
 interface AkpdSuggestion {
     bidang: string;
@@ -64,6 +66,7 @@ export default function AnnualCreate({
     akpd_suggestion,
     rpls,
 }: Props) {
+    const { errorOpen, setErrorOpen, formErrors, handleError } = useFormError();
     const [yearId, setYearId] = useState<number | null>(active_year_id);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
@@ -145,7 +148,7 @@ export default function AnnualCreate({
             },
             {
                 onSuccess: () => toast.success('Program tahunan dibuat.'),
-                onError: () => toast.error('Terjadi kesalahan.'),
+                onError: handleError,
                 onFinish: () => setProcessing(false),
             },
         );
@@ -398,6 +401,7 @@ export default function AnnualCreate({
                     </Button>
                 </div>
             </div>
+            <FormErrorModal open={errorOpen} onOpenChange={setErrorOpen} errors={formErrors} />
         </AuthenticatedLayout>
     );
 }

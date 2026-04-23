@@ -31,6 +31,12 @@ class TeacherController extends Controller
             ->paginate($request->input('per_page', 15))
             ->withQueryString();
 
+        $teachers->through(function (Teacher $t) {
+            $t->photo_url = $t->getFirstMediaUrl('photo');
+
+            return $t;
+        });
+
         $users = User::where('is_active', true)->orderBy('name')->get(['id', 'name', 'username']);
 
         return Inertia::render('Teachers/Index', [
@@ -38,6 +44,14 @@ class TeacherController extends Controller
             'users' => $users,
             'filters' => $request->only('search', 'is_bk', 'per_page'),
         ]);
+    }
+
+    public function updatePhoto(Request $request, Teacher $teacher): RedirectResponse
+    {
+        $request->validate(['photo' => 'required|image|max:2048']);
+        $teacher->addMediaFromRequest('photo')->toMediaCollection('photo');
+
+        return back()->with('success', 'Foto guru diperbarui.');
     }
 
     public function store(Request $request): RedirectResponse
@@ -77,5 +91,13 @@ class TeacherController extends Controller
         $teacher->delete();
 
         return back()->with('success', 'Guru berhasil dihapus.');
+    }
+
+    public function destroyBulk(Request $request): RedirectResponse
+    {
+        $ids = $request->validate(['ids' => 'required|array|min:1', 'ids.*' => 'integer'])['ids'];
+        Teacher::whereIn('id', $ids)->get()->each->delete();
+
+        return back()->with('success', count($ids).' guru berhasil dihapus.');
     }
 }

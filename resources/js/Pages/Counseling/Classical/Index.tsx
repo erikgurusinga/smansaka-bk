@@ -1,27 +1,22 @@
-import { Head, usePage } from '@inertiajs/react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { Plus, Pencil, Trash2 } from 'lucide-react';
+import { Plus, Pencil, Trash2, Eye } from 'lucide-react';
+import { useSelection } from '@/hooks/useSelection';
 import { toast } from 'sonner';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/Components/ui/Button';
-import { Input } from '@/Components/ui/Input';
-import { Label } from '@/Components/ui/Label';
-import { InputError } from '@/Components/ui/InputError';
 import { Select } from '@/Components/ui/Select';
-import { Textarea } from '@/Components/ui/Textarea';
 import { Pagination } from '@/Components/ui/Pagination';
 import { PerPageSelect } from '@/Components/ui/PerPageSelect';
 import { SearchInput } from '@/Components/ui/SearchInput';
 import { EmptyState } from '@/Components/ui/EmptyState';
 import { DeleteModal } from '@/Components/ui/DeleteModal';
-import { Dialog } from '@/Components/ui/Dialog';
 import { router } from '@inertiajs/react';
 import { PageProps, ClassicalGuidance, AcademicYear, PaginatedData, SchoolClass } from '@/types';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
+import { FormErrorModal } from '@/Components/ui/FormErrorModal';
+import { useFormError } from '@/hooks/useFormError';
 
 interface Props extends PageProps {
     records: PaginatedData<ClassicalGuidance>;
@@ -36,37 +31,19 @@ interface Props extends PageProps {
     };
 }
 
-const schema = z.object({
-    class_id: z.string().min(1, 'Kelas wajib dipilih'),
-    academic_year_id: z.string().min(1),
-    date: z.string().min(1, 'Tanggal wajib diisi'),
-    topic: z.string().min(1, 'Topik wajib diisi').max(255),
-    method: z.string().max(100).optional(),
-    duration_minutes: z.coerce.number().int().min(1).max(480).optional().or(z.literal('')),
-    description: z.string().optional(),
-    evaluation: z.string().optional(),
-});
-type FormData = z.infer<typeof schema>;
-
-const fmt = (d: string) => format(new Date(d), 'd MMM yyyy', { locale: idLocale });
+const fmt = (d: string) => format(parseISO(d.slice(0, 10)), 'd MMM yyyy', { locale: idLocale });
 
 export default function ClassicalGuidanceIndex({
     records,
     classes,
     academic_years,
-    active_year,
     filters,
     permissions,
 }: Props) {
+    const { errorOpen, setErrorOpen, formErrors, handleError } = useFormError();
     const { flash } = usePage<Props>().props;
 
     const canWrite = permissions['counseling_classical']?.write;
-
-    const [dialog, setDialog] = useState<{
-        open: boolean;
-        mode: 'create' | 'edit';
-        item: ClassicalGuidance | null;
-    }>({ open: false, mode: 'create', item: null });
 
     const [deleteModal, setDeleteModal] = useState<{
         open: boolean;
@@ -74,76 +51,8 @@ export default function ClassicalGuidanceIndex({
     }>({ open: false, item: null });
 
     const [processing, setProcessing] = useState(false);
-
-    const {
-        register,
-        handleSubmit,
-        setValue,
-        watch,
-        reset,
-        formState: { errors },
-    } = useForm<FormData>({
-        resolver: zodResolver(schema),
-        defaultValues: {
-            class_id: '',
-            academic_year_id: active_year ? String(active_year.id) : '',
-            date: new Date().toISOString().split('T')[0],
-            topic: '',
-            method: '',
-            description: '',
-            evaluation: '',
-        },
-    });
-
-    const openCreate = () => {
-        reset({
-            class_id: '',
-            academic_year_id: active_year ? String(active_year.id) : '',
-            date: new Date().toISOString().split('T')[0],
-            topic: '',
-            method: '',
-            description: '',
-            evaluation: '',
-        });
-        setDialog({ open: true, mode: 'create', item: null });
-    };
-
-    const openEdit = (item: ClassicalGuidance) => {
-        reset({
-            class_id: String(item.class_id),
-            academic_year_id: String(item.academic_year_id),
-            date: item.date,
-            topic: item.topic,
-            method: item.method ?? '',
-            duration_minutes: item.duration_minutes ?? '',
-            description: item.description ?? '',
-            evaluation: item.evaluation ?? '',
-        });
-        setDialog({ open: true, mode: 'edit', item });
-    };
-
-    const onSubmit = (data: FormData) => {
-        setProcessing(true);
-        if (dialog.mode === 'create') {
-            router.post(route('counseling.classical.store'), data, {
-                onSuccess: () => {
-                    setDialog({ open: false, mode: 'create', item: null });
-                    toast.success('Bimbingan klasikal dicatat.');
-                },
-                onError: () => toast.error('Terjadi kesalahan.'),
-                onFinish: () => setProcessing(false),
-            });
-        } else if (dialog.item) {
-            router.put(route('counseling.classical.update', dialog.item.id), data, {
-                onSuccess: () => {
-                    setDialog({ open: false, mode: 'create', item: null });
-                    toast.success('Bimbingan klasikal diperbarui.');
-                },
-                onError: () => toast.error('Terjadi kesalahan.'),
-                onFinish: () => setProcessing(false),
-            });
-        }
-    };
+    const { selected, toggle, togglePage, clearSelection, isAllPageSelected } = useSelection();
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
     const confirmDelete = () => {
         if (!deleteModal.item) return;
@@ -153,7 +62,21 @@ export default function ClassicalGuidanceIndex({
                 setDeleteModal({ open: false, item: null });
                 toast.success('Catatan dihapus.');
             },
-            onError: () => toast.error('Terjadi kesalahan.'),
+            onError: handleError,
+            onFinish: () => setProcessing(false),
+        });
+    };
+
+    const confirmBulkDelete = () => {
+        setProcessing(true);
+        router.delete(route('counseling.classical.bulk-destroy'), {
+            data: { ids: Array.from(selected) },
+            onSuccess: () => {
+                setBulkDeleteOpen(false);
+                clearSelection();
+                toast.success(`${selected.size} item dihapus.`);
+            },
+            onError: handleError,
             onFinish: () => setProcessing(false),
         });
     };
@@ -161,15 +84,10 @@ export default function ClassicalGuidanceIndex({
     const handleFilter = (key: string, value: string) => {
         router.get(
             route('counseling.classical.index'),
-            { ...filters, [key]: value, page: 1 },
+            { ...filters, [key]: value, ...(key !== 'page' && { page: 1 }) },
             { preserveState: true, replace: true },
         );
     };
-
-    const classOptions = [
-        { value: '', label: '— Pilih Kelas —' },
-        ...classes.map((c) => ({ value: String(c.id), label: c.name })),
-    ];
 
     return (
         <AuthenticatedLayout
@@ -194,10 +112,20 @@ export default function ClassicalGuidanceIndex({
                         </p>
                     </div>
                     {canWrite && (
-                        <Button onClick={openCreate}>
-                            <Plus className="h-4 w-4" />
-                            Catat
-                        </Button>
+                        <div className="flex gap-2">
+                            {selected.size > 0 && (
+                                <Button variant="danger" onClick={() => setBulkDeleteOpen(true)}>
+                                    <Trash2 className="h-4 w-4" />
+                                    Hapus {selected.size} terpilih
+                                </Button>
+                            )}
+                            <Link href={route('counseling.classical.create')}>
+                                <Button>
+                                    <Plus className="h-4 w-4" />
+                                    Catat
+                                </Button>
+                            </Link>
+                        </div>
                     )}
                 </div>
 
@@ -242,6 +170,18 @@ export default function ClassicalGuidanceIndex({
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-neutral-100 bg-neutral-50 text-left text-xs font-medium tracking-wide text-neutral-500 uppercase">
+                                    <th className="w-10 px-4 py-3">
+                                        <input
+                                            type="checkbox"
+                                            className="text-primary-600 h-4 w-4 rounded border-neutral-300"
+                                            checked={isAllPageSelected(
+                                                records.data.map((i) => i.id),
+                                            )}
+                                            onChange={() =>
+                                                togglePage(records.data.map((i) => i.id))
+                                            }
+                                        />
+                                    </th>
                                     <th className="px-4 py-3">Kelas</th>
                                     <th className="px-4 py-3">Topik</th>
                                     <th className="px-4 py-3">Tanggal</th>
@@ -253,13 +193,32 @@ export default function ClassicalGuidanceIndex({
                             <tbody className="divide-y divide-neutral-50">
                                 {records.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6}>
+                                        <td colSpan={7}>
                                             <EmptyState description="Belum ada catatan bimbingan klasikal." />
                                         </td>
                                     </tr>
                                 ) : (
                                     records.data.map((item) => (
-                                        <tr key={item.id} className="hover:bg-neutral-50/50">
+                                        <tr
+                                            key={item.id}
+                                            className="cursor-pointer hover:bg-neutral-50/50"
+                                            onClick={() =>
+                                                router.visit(
+                                                    route('counseling.classical.show', item.id),
+                                                )
+                                            }
+                                        >
+                                            <td
+                                                className="px-4 py-2"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    className="text-primary-600 h-4 w-4 rounded border-neutral-300"
+                                                    checked={selected.has(item.id)}
+                                                    onChange={() => toggle(item.id)}
+                                                />
+                                            </td>
                                             <td className="px-4 py-3">
                                                 <p className="font-medium text-neutral-900">
                                                     {item.school_class?.name ?? '—'}
@@ -284,25 +243,54 @@ export default function ClassicalGuidanceIndex({
                                                     ? `${item.duration_minutes} mnt`
                                                     : '—'}
                                             </td>
-                                            <td className="px-4 py-3">
-                                                {canWrite && (
-                                                    <div className="flex items-center justify-end gap-1">
+                                            <td
+                                                className="px-4 py-3"
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <Link
+                                                        href={route(
+                                                            'counseling.classical.show',
+                                                            item.id,
+                                                        )}
+                                                    >
                                                         <button
-                                                            onClick={() => openEdit(item)}
+                                                            type="button"
                                                             className="hover:bg-primary-50 hover:text-primary-600 rounded-lg p-1.5 text-neutral-400"
                                                         >
-                                                            <Pencil className="h-4 w-4" />
+                                                            <Eye className="h-4 w-4" />
                                                         </button>
-                                                        <button
-                                                            onClick={() =>
-                                                                setDeleteModal({ open: true, item })
-                                                            }
-                                                            className="rounded-lg p-1.5 text-neutral-400 hover:bg-red-50 hover:text-red-600"
-                                                        >
-                                                            <Trash2 className="h-4 w-4" />
-                                                        </button>
-                                                    </div>
-                                                )}
+                                                    </Link>
+                                                    {canWrite && (
+                                                        <>
+                                                            <Link
+                                                                href={route(
+                                                                    'counseling.classical.edit',
+                                                                    item.id,
+                                                                )}
+                                                            >
+                                                                <button
+                                                                    type="button"
+                                                                    className="hover:bg-primary-50 hover:text-primary-600 rounded-lg p-1.5 text-neutral-400"
+                                                                >
+                                                                    <Pencil className="h-4 w-4" />
+                                                                </button>
+                                                            </Link>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    setDeleteModal({
+                                                                        open: true,
+                                                                        item,
+                                                                    })
+                                                                }
+                                                                className="rounded-lg p-1.5 text-neutral-400 hover:bg-red-50 hover:text-red-600"
+                                                            >
+                                                                <Trash2 className="h-4 w-4" />
+                                                            </button>
+                                                        </>
+                                                    )}
+                                                </div>
                                             </td>
                                         </tr>
                                     ))
@@ -320,105 +308,6 @@ export default function ClassicalGuidanceIndex({
                 </div>
             </div>
 
-            <Dialog
-                open={dialog.open}
-                onOpenChange={(open) => setDialog((d) => ({ ...d, open }))}
-                title={
-                    dialog.mode === 'create'
-                        ? 'Catat Bimbingan Klasikal'
-                        : 'Edit Bimbingan Klasikal'
-                }
-                className="max-w-lg"
-            >
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <Label>Kelas</Label>
-                            <Select
-                                value={watch('class_id') ?? ''}
-                                onValueChange={(v) => setValue('class_id', v)}
-                                options={classOptions}
-                                disabled={dialog.mode === 'edit'}
-                            />
-                            <InputError message={errors.class_id?.message} />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="cl-date">Tanggal</Label>
-                            <Input id="cl-date" type="date" {...register('date')} />
-                            <InputError message={errors.date?.message} />
-                        </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <Label htmlFor="cl-topic">Topik / Judul RPL</Label>
-                        <Input
-                            id="cl-topic"
-                            placeholder="Contoh: Merencanakan Karier Masa Depan"
-                            {...register('topic')}
-                        />
-                        <InputError message={errors.topic?.message} />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="cl-method">Metode</Label>
-                            <Input
-                                id="cl-method"
-                                placeholder="Ceramah, diskusi, games..."
-                                {...register('method')}
-                            />
-                        </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="cl-dur">Durasi (menit)</Label>
-                            <Input
-                                id="cl-dur"
-                                type="number"
-                                min={1}
-                                max={480}
-                                placeholder="45"
-                                {...register('duration_minutes')}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <Label htmlFor="cl-desc">Deskripsi / Materi</Label>
-                        <Textarea
-                            id="cl-desc"
-                            rows={2}
-                            placeholder="Rangkuman materi yang disampaikan..."
-                            {...register('description')}
-                        />
-                    </div>
-
-                    <div className="space-y-1.5">
-                        <Label htmlFor="cl-eval">Evaluasi</Label>
-                        <Textarea
-                            id="cl-eval"
-                            rows={2}
-                            placeholder="Respon siswa, hambatan, catatan perbaikan..."
-                            {...register('evaluation')}
-                        />
-                    </div>
-
-                    <input type="hidden" {...register('academic_year_id')} />
-
-                    <div className="flex justify-end gap-3 pt-2">
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={() => setDialog((d) => ({ ...d, open: false }))}
-                            disabled={processing}
-                        >
-                            Batal
-                        </Button>
-                        <Button type="submit" disabled={processing}>
-                            {processing ? 'Menyimpan...' : 'Simpan'}
-                        </Button>
-                    </div>
-                </form>
-            </Dialog>
-
             <DeleteModal
                 open={deleteModal.open}
                 onOpenChange={(open) => setDeleteModal({ open, item: deleteModal.item })}
@@ -427,6 +316,16 @@ export default function ClassicalGuidanceIndex({
                 onConfirm={confirmDelete}
                 loading={processing}
             />
+
+            <DeleteModal
+                open={bulkDeleteOpen}
+                onOpenChange={setBulkDeleteOpen}
+                title="Hapus Data Terpilih"
+                description={`Yakin ingin menghapus ${selected.size} item? Tindakan ini tidak dapat dibatalkan.`}
+                onConfirm={confirmBulkDelete}
+                loading={processing}
+            />
+            <FormErrorModal open={errorOpen} onOpenChange={setErrorOpen} errors={formErrors} />
         </AuthenticatedLayout>
     );
 }

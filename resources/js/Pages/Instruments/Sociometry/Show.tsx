@@ -11,7 +11,7 @@ import {
     Student,
     SociometryCriterion,
 } from '@/types';
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
 
 interface Props extends PageProps {
@@ -22,7 +22,7 @@ interface Props extends PageProps {
     answered_student_ids: number[];
 }
 
-const fmt = (d: string) => format(new Date(d), 'd MMMM yyyy', { locale: idLocale });
+const fmt = (d: string) => format(parseISO(d.slice(0, 10)), 'd MMMM yyyy', { locale: idLocale });
 
 interface Node {
     id: number;

@@ -10,6 +10,8 @@ import { Select } from '@/Components/ui/Select';
 import { Textarea } from '@/Components/ui/Textarea';
 import { Badge } from '@/Components/ui/Badge';
 import { PageProps, AnnualProgram, RplBk } from '@/types';
+import { FormErrorModal } from '@/Components/ui/FormErrorModal';
+import { useFormError } from '@/hooks/useFormError';
 
 interface PlanItem {
     bidang: 'pribadi' | 'sosial' | 'belajar' | 'karier';
@@ -42,6 +44,7 @@ const bidangBadge = (b: string): 'info' | 'success' | 'warning' | 'danger' => {
 };
 
 export default function AnnualEdit({ program, rpls }: Props) {
+    const { errorOpen, setErrorOpen, formErrors, handleError } = useFormError();
     const [title, setTitle] = useState(program.title);
     const [description, setDescription] = useState(program.description ?? '');
     const [status, setStatus] = useState<'draft' | 'active' | 'completed'>(program.status);
@@ -87,7 +90,7 @@ export default function AnnualEdit({ program, rpls }: Props) {
             { title, description: description || undefined, status, items },
             {
                 onSuccess: () => toast.success('Program diperbarui.'),
-                onError: () => toast.error('Terjadi kesalahan.'),
+                onError: handleError,
                 onFinish: () => setProcessing(false),
             },
         );
@@ -277,6 +280,7 @@ export default function AnnualEdit({ program, rpls }: Props) {
                     </Button>
                 </div>
             </div>
+            <FormErrorModal open={errorOpen} onOpenChange={setErrorOpen} errors={formErrors} />
         </AuthenticatedLayout>
     );
 }

@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { Head, router, usePage } from '@inertiajs/react';
+import { useSelection } from '@/hooks/useSelection';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Plus, Pencil, Trash2, ShieldCheck } from 'lucide-react';
+import { Plus, Pencil, Trash2, ShieldCheck, Camera, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/Components/ui/Button';
@@ -19,6 +20,8 @@ import { PerPageSelect } from '@/Components/ui/PerPageSelect';
 import { SearchInput } from '@/Components/ui/SearchInput';
 import { EmptyState } from '@/Components/ui/EmptyState';
 import { PageProps, Teacher, User, PaginatedData } from '@/types';
+import { FormErrorModal } from '@/Components/ui/FormErrorModal';
+import { useFormError } from '@/hooks/useFormError';
 
 const schema = z.object({
     nip: z.string().optional(),
@@ -37,6 +40,7 @@ interface Props extends PageProps {
 }
 
 export default function TeachersIndex({ teachers, users, filters, permissions }: Props) {
+    const { errorOpen, setErrorOpen, formErrors, handleError } = useFormError();
     const { flash } = usePage<Props>().props;
 
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -46,6 +50,14 @@ export default function TeachersIndex({ teachers, users, filters, permissions }:
     });
     const [editing, setEditing] = useState<Teacher | null>(null);
     const [processing, setProcessing] = useState(false);
+    const { selected, toggle, togglePage, clearSelection, isAllPageSelected } = useSelection();
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+    const [photoModal, setPhotoModal] = useState<{ open: boolean; item: Teacher | null }>({
+        open: false,
+        item: null,
+    });
+    const [photoFile, setPhotoFile] = useState<File | null>(null);
+    const photoRef = useRef<HTMLInputElement>(null);
 
     const canWrite = permissions['classes']?.write;
 
@@ -106,7 +118,7 @@ export default function TeachersIndex({ teachers, users, filters, permissions }:
                 setDialogOpen(false);
                 toast.success(editing ? 'Data guru diperbarui.' : 'Guru ditambahkan.');
             },
-            onError: () => toast.error('Terjadi kesalahan.'),
+            onError: handleError,
             onFinish: () => setProcessing(false),
         });
     };
@@ -123,10 +135,39 @@ export default function TeachersIndex({ teachers, users, filters, permissions }:
         });
     };
 
+    const confirmBulkDelete = () => {
+        setProcessing(true);
+        router.delete(route('teachers.bulk-destroy'), {
+            data: { ids: Array.from(selected) },
+            onSuccess: () => {
+                setBulkDeleteOpen(false);
+                clearSelection();
+                toast.success(`${selected.size} item dihapus.`);
+            },
+            onError: handleError,
+            onFinish: () => setProcessing(false),
+        });
+    };
+
+    const submitPhoto = () => {
+        if (!photoModal.item || !photoFile) return;
+        setProcessing(true);
+        router.post(route('teachers.photo', photoModal.item.id), { photo: photoFile } as never, {
+            forceFormData: true,
+            onSuccess: () => {
+                setPhotoModal({ open: false, item: null });
+                setPhotoFile(null);
+                toast.success('Foto diperbarui.');
+            },
+            onError: handleError,
+            onFinish: () => setProcessing(false),
+        });
+    };
+
     const handleFilter = (key: string, value: string) => {
         router.get(
             route('teachers.index'),
-            { ...filters, [key]: value, page: 1 },
+            { ...filters, [key]: value, ...(key !== 'page' && { page: 1 }) },
             { preserveState: true, replace: true },
         );
     };
@@ -152,10 +193,18 @@ export default function TeachersIndex({ teachers, users, filters, permissions }:
                         </p>
                     </div>
                     {canWrite && (
-                        <Button onClick={openCreate}>
-                            <Plus className="h-4 w-4" />
-                            Tambah Guru
-                        </Button>
+                        <div className="flex gap-2">
+                            {selected.size > 0 && (
+                                <Button variant="danger" onClick={() => setBulkDeleteOpen(true)}>
+                                    <Trash2 className="h-4 w-4" />
+                                    Hapus {selected.size} terpilih
+                                </Button>
+                            )}
+                            <Button onClick={openCreate}>
+                                <Plus className="h-4 w-4" />
+                                Tambah Guru
+                            </Button>
+                        </div>
                     )}
                 </div>
 
@@ -185,6 +234,19 @@ export default function TeachersIndex({ teachers, users, filters, permissions }:
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-neutral-100 bg-neutral-50 text-left text-xs font-medium tracking-wide text-neutral-500 uppercase">
+                                    <th className="w-10 px-4 py-3">
+                                        <input
+                                            type="checkbox"
+                                            className="text-primary-600 h-4 w-4 rounded border-neutral-300"
+                                            checked={isAllPageSelected(
+                                                teachers.data.map((i) => i.id),
+                                            )}
+                                            onChange={() =>
+                                                togglePage(teachers.data.map((i) => i.id))
+                                            }
+                                        />
+                                    </th>
+                                    <th className="w-12 px-4 py-3"></th>
                                     <th className="px-4 py-3">Nama</th>
                                     <th className="px-4 py-3">NIP</th>
                                     <th className="px-4 py-3">Telepon</th>
@@ -196,13 +258,47 @@ export default function TeachersIndex({ teachers, users, filters, permissions }:
                             <tbody className="divide-y divide-neutral-50">
                                 {teachers.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={canWrite ? 6 : 5}>
+                                        <td colSpan={canWrite ? 8 : 7}>
                                             <EmptyState description="Belum ada data guru." />
                                         </td>
                                     </tr>
                                 ) : (
                                     teachers.data.map((item) => (
                                         <tr key={item.id} className="hover:bg-neutral-50/50">
+                                            <td className="px-4 py-2">
+                                                <input
+                                                    type="checkbox"
+                                                    className="text-primary-600 h-4 w-4 rounded border-neutral-300"
+                                                    checked={selected.has(item.id)}
+                                                    onChange={() => toggle(item.id)}
+                                                />
+                                            </td>
+                                            <td className="px-4 py-2">
+                                                <div
+                                                    className="relative h-9 w-9 cursor-pointer overflow-hidden rounded-full bg-neutral-100"
+                                                    onClick={() =>
+                                                        canWrite &&
+                                                        setPhotoModal({ open: true, item })
+                                                    }
+                                                >
+                                                    {item.photo_url ? (
+                                                        <img
+                                                            src={item.photo_url}
+                                                            alt={item.name}
+                                                            className="h-full w-full object-cover"
+                                                        />
+                                                    ) : (
+                                                        <span className="flex h-full w-full items-center justify-center text-xs font-semibold text-neutral-400">
+                                                            {item.name.charAt(0)}
+                                                        </span>
+                                                    )}
+                                                    {canWrite && (
+                                                        <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition hover:bg-black/30">
+                                                            <Camera className="h-3 w-3 text-white opacity-0 transition hover:opacity-100" />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </td>
                                             <td className="px-4 py-3 font-medium text-neutral-900">
                                                 {item.name}
                                             </td>
@@ -341,6 +437,67 @@ export default function TeachersIndex({ teachers, users, filters, permissions }:
                 onConfirm={confirmDelete}
                 loading={processing}
             />
+
+            <DeleteModal
+                open={bulkDeleteOpen}
+                onOpenChange={setBulkDeleteOpen}
+                title="Hapus Data Terpilih"
+                description={`Yakin ingin menghapus ${selected.size} item? Tindakan ini tidak dapat dibatalkan.`}
+                onConfirm={confirmBulkDelete}
+                loading={processing}
+            />
+
+            <Dialog
+                open={photoModal.open}
+                onOpenChange={(open) => {
+                    setPhotoModal({ open, item: photoModal.item });
+                    setPhotoFile(null);
+                }}
+                title="Update Foto Guru"
+                description={photoModal.item?.name}
+            >
+                <div className="space-y-4">
+                    <div
+                        className="hover:border-primary-400 hover:bg-primary-50/30 flex cursor-pointer flex-col items-center justify-center rounded-xl border-2 border-dashed border-neutral-200 p-8"
+                        onClick={() => photoRef.current?.click()}
+                    >
+                        {photoFile ? (
+                            <img
+                                src={URL.createObjectURL(photoFile)}
+                                alt="preview"
+                                className="h-32 w-32 rounded-full object-cover"
+                            />
+                        ) : (
+                            <>
+                                <Upload className="mb-2 h-8 w-8 text-neutral-300" />
+                                <p className="text-sm text-neutral-500">Klik untuk pilih foto</p>
+                                <p className="text-xs text-neutral-400">
+                                    JPG, PNG, WebP — maks 2 MB
+                                </p>
+                            </>
+                        )}
+                        <input
+                            ref={photoRef}
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            onChange={(e) => setPhotoFile(e.target.files?.[0] ?? null)}
+                        />
+                    </div>
+                    <div className="flex justify-end gap-3">
+                        <Button
+                            variant="secondary"
+                            onClick={() => setPhotoModal({ open: false, item: null })}
+                        >
+                            Batal
+                        </Button>
+                        <Button onClick={submitPhoto} disabled={!photoFile || processing}>
+                            {processing ? 'Mengupload...' : 'Simpan Foto'}
+                        </Button>
+                    </div>
+                </div>
+            </Dialog>
+            <FormErrorModal open={errorOpen} onOpenChange={setErrorOpen} errors={formErrors} />
         </AuthenticatedLayout>
     );
 }

@@ -20,6 +20,8 @@ import { PerPageSelect } from '@/Components/ui/PerPageSelect';
 import { SearchInput } from '@/Components/ui/SearchInput';
 import { EmptyState } from '@/Components/ui/EmptyState';
 import { PageProps, AkpdItem, PaginatedData } from '@/types';
+import { FormErrorModal } from '@/Components/ui/FormErrorModal';
+import { useFormError } from '@/hooks/useFormError';
 
 const schema = z.object({
     bidang: z.enum(['pribadi', 'sosial', 'belajar', 'karier']),
@@ -52,6 +54,7 @@ const bidangBadge = (b: string): 'info' | 'success' | 'warning' | 'danger' => {
 };
 
 export default function AkpdItems({ items, filters, permissions }: Props) {
+    const { errorOpen, setErrorOpen, formErrors, handleError } = useFormError();
     const { flash } = usePage<Props>().props;
 
     const [dialogOpen, setDialogOpen] = useState(false);
@@ -103,7 +106,7 @@ export default function AkpdItems({ items, filters, permissions }: Props) {
                 setDialogOpen(false);
                 toast.success(editing ? 'Butir AKPD diperbarui.' : 'Butir AKPD ditambahkan.');
             },
-            onError: () => toast.error('Terjadi kesalahan.'),
+            onError: handleError,
             onFinish: () => setProcessing(false),
         });
     };
@@ -116,7 +119,7 @@ export default function AkpdItems({ items, filters, permissions }: Props) {
                 setDeleteModal({ open: false, item: null });
                 toast.success('Butir dihapus.');
             },
-            onError: () => toast.error('Terjadi kesalahan.'),
+            onError: handleError,
             onFinish: () => setProcessing(false),
         });
     };
@@ -124,7 +127,7 @@ export default function AkpdItems({ items, filters, permissions }: Props) {
     const handleFilter = (key: string, value: string) => {
         router.get(
             route('akpd.items'),
-            { ...filters, [key]: value, page: 1 },
+            { ...filters, [key]: value, ...(key !== 'page' && { page: 1 }) },
             { preserveState: true, replace: true },
         );
     };
@@ -328,6 +331,7 @@ export default function AkpdItems({ items, filters, permissions }: Props) {
                 onConfirm={confirmDelete}
                 loading={processing}
             />
+            <FormErrorModal open={errorOpen} onOpenChange={setErrorOpen} errors={formErrors} />
         </AuthenticatedLayout>
     );
 }

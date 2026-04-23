@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class StudentGuidance extends Model
 {
+    protected $table = 'student_guidance';
+
     public $incrementing = false;
 
     public $timestamps = false;

@@ -6,6 +6,8 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/Components/ui/Button';
 import { Badge } from '@/Components/ui/Badge';
 import { PageProps, Student, AcademicYear, AkpdItem } from '@/types';
+import { FormErrorModal } from '@/Components/ui/FormErrorModal';
+import { useFormError } from '@/hooks/useFormError';
 
 interface Props extends PageProps {
     student: Student;
@@ -32,6 +34,7 @@ const bidangBadge = (b: string): 'info' | 'success' | 'warning' | 'danger' => {
 };
 
 export default function AkpdFill({ student, items, responses, academic_year }: Props) {
+    const { errorOpen, setErrorOpen, formErrors, handleError } = useFormError();
     const [answers, setAnswers] = useState<Record<number, boolean>>(responses ?? {});
     const [processing, setProcessing] = useState(false);
 
@@ -57,7 +60,7 @@ export default function AkpdFill({ student, items, responses, academic_year }: P
             { academic_year_id: academic_year.id, answers: payload },
             {
                 onSuccess: () => toast.success('Jawaban tersimpan.'),
-                onError: () => toast.error('Gagal menyimpan.'),
+                onError: handleError,
                 onFinish: () => setProcessing(false),
             },
         );
@@ -148,6 +151,7 @@ export default function AkpdFill({ student, items, responses, academic_year }: P
                     </Button>
                 </div>
             </div>
+            <FormErrorModal open={errorOpen} onOpenChange={setErrorOpen} errors={formErrors} />
         </AuthenticatedLayout>
     );
 }

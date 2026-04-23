@@ -106,4 +106,12 @@ class RplBkController extends Controller
             'academic_year_id' => 'nullable|exists:academic_years,id',
         ]);
     }
+
+    public function destroyBulk(Request $request): RedirectResponse
+    {
+        $ids = $request->validate(['ids' => 'required|array|min:1', 'ids.*' => 'integer'])['ids'];
+        RplBk::whereIn('id', $ids)->delete();
+
+        return back()->with('success', count($ids).' RPL BK berhasil dihapus.');
+    }
 }

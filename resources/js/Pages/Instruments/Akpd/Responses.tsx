@@ -40,7 +40,7 @@ export default function AkpdResponses({
     const handleFilter = (key: string, value: string) => {
         router.get(
             route('akpd.responses'),
-            { ...filters, [key]: value, page: 1 },
+            { ...filters, [key]: value, ...(key !== 'page' && { page: 1 }) },
             { preserveState: true, replace: true },
         );
     };

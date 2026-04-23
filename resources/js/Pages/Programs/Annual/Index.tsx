@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import { useSelection } from '@/hooks/useSelection';
 import { Plus, Eye, Trash2, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
@@ -13,6 +14,8 @@ import { DeleteModal } from '@/Components/ui/DeleteModal';
 import { PageProps, AnnualProgram, AcademicYear, PaginatedData } from '@/types';
 import { format } from 'date-fns';
 import { id as idLocale } from 'date-fns/locale';
+import { FormErrorModal } from '@/Components/ui/FormErrorModal';
+import { useFormError } from '@/hooks/useFormError';
 
 interface AnnualRow extends AnnualProgram {
     semester_programs_count: number;
@@ -44,19 +47,22 @@ const sourceLabel = (s: string) =>
     ({ manual: 'Manual', akpd: 'Dari AKPD', dcm: 'Dari DCM' })[s] ?? s;
 
 export default function AnnualIndex({ records, academic_years, filters, permissions }: Props) {
+    const { errorOpen, setErrorOpen, formErrors, handleError } = useFormError();
     const { flash } = usePage<Props>().props;
     const [deleteModal, setDeleteModal] = useState<{
         open: boolean;
         item: AnnualRow | null;
     }>({ open: false, item: null });
     const [processing, setProcessing] = useState(false);
+    const { selected, toggle, togglePage, clearSelection, isAllPageSelected } = useSelection();
+    const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
     const canWrite = permissions['program_annual']?.write;
 
     const handleFilter = (key: string, value: string) => {
         router.get(
             route('annual.index'),
-            { ...filters, [key]: value, page: 1 },
+            { ...filters, [key]: value, ...(key !== 'page' && { page: 1 }) },
             { preserveState: true, replace: true },
         );
     };
@@ -69,7 +75,21 @@ export default function AnnualIndex({ records, academic_years, filters, permissi
                 setDeleteModal({ open: false, item: null });
                 toast.success('Program tahunan dihapus.');
             },
-            onError: () => toast.error('Terjadi kesalahan.'),
+            onError: handleError,
+            onFinish: () => setProcessing(false),
+        });
+    };
+
+    const confirmBulkDelete = () => {
+        setProcessing(true);
+        router.delete(route('annual.bulk-destroy'), {
+            data: { ids: Array.from(selected) },
+            onSuccess: () => {
+                setBulkDeleteOpen(false);
+                clearSelection();
+                toast.success(`${selected.size} item dihapus.`);
+            },
+            onError: handleError,
             onFinish: () => setProcessing(false),
         });
     };
@@ -96,14 +116,22 @@ export default function AnnualIndex({ records, academic_years, filters, permissi
                             Rencana layanan BK untuk satu tahun pelajaran (berbasis hasil AKPD)
                         </p>
                     </div>
-                    {canWrite && (
-                        <Link href={route('annual.create')}>
-                            <Button className="gap-1.5">
-                                <Sparkles className="h-4 w-4" />
-                                Susun Program
+                    <div className="flex gap-2">
+                        {canWrite && selected.size > 0 && (
+                            <Button variant="danger" onClick={() => setBulkDeleteOpen(true)}>
+                                <Trash2 className="h-4 w-4" />
+                                Hapus {selected.size} terpilih
                             </Button>
-                        </Link>
-                    )}
+                        )}
+                        {canWrite && (
+                            <Link href={route('annual.create')}>
+                                <Button className="gap-1.5">
+                                    <Sparkles className="h-4 w-4" />
+                                    Susun Program
+                                </Button>
+                            </Link>
+                        )}
+                    </div>
                 </div>
 
                 <div className="rounded-2xl bg-white shadow-sm ring-1 ring-neutral-100">
@@ -143,6 +171,18 @@ export default function AnnualIndex({ records, academic_years, filters, permissi
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-neutral-100 bg-neutral-50 text-left text-xs font-medium tracking-wide text-neutral-500 uppercase">
+                                    <th className="w-10 px-4 py-3">
+                                        <input
+                                            type="checkbox"
+                                            className="text-primary-600 h-4 w-4 rounded border-neutral-300"
+                                            checked={isAllPageSelected(
+                                                records.data.map((i) => i.id),
+                                            )}
+                                            onChange={() =>
+                                                togglePage(records.data.map((i) => i.id))
+                                            }
+                                        />
+                                    </th>
                                     <th className="px-4 py-3">Judul</th>
                                     <th className="px-4 py-3">Tahun Ajaran</th>
                                     <th className="px-4 py-3">Sumber</th>
@@ -155,13 +195,21 @@ export default function AnnualIndex({ records, academic_years, filters, permissi
                             <tbody className="divide-y divide-neutral-50">
                                 {records.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7}>
+                                        <td colSpan={8}>
                                             <EmptyState description="Belum ada program tahunan. Mulai susun program — saran otomatis akan diambil dari hasil AKPD." />
                                         </td>
                                     </tr>
                                 ) : (
                                     records.data.map((item) => (
                                         <tr key={item.id} className="hover:bg-neutral-50/50">
+                                            <td className="px-4 py-2">
+                                                <input
+                                                    type="checkbox"
+                                                    className="text-primary-600 h-4 w-4 rounded border-neutral-300"
+                                                    checked={selected.has(item.id)}
+                                                    onChange={() => toggle(item.id)}
+                                                />
+                                            </td>
                                             <td className="px-4 py-3 font-medium text-neutral-900">
                                                 {item.title}
                                                 <p className="mt-0.5 text-xs font-normal text-neutral-400">
@@ -240,6 +288,16 @@ export default function AnnualIndex({ records, academic_years, filters, permissi
                 onConfirm={confirmDelete}
                 loading={processing}
             />
+
+            <DeleteModal
+                open={bulkDeleteOpen}
+                onOpenChange={setBulkDeleteOpen}
+                title="Hapus Data Terpilih"
+                description={`Yakin ingin menghapus ${selected.size} item? Tindakan ini tidak dapat dibatalkan.`}
+                onConfirm={confirmBulkDelete}
+                loading={processing}
+            />
+            <FormErrorModal open={errorOpen} onOpenChange={setErrorOpen} errors={formErrors} />
         </AuthenticatedLayout>
     );
 }

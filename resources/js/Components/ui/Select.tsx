@@ -16,6 +16,8 @@ interface SelectProps {
     className?: string;
 }
 
+const EMPTY_SENTINEL = '__empty__';
+
 export function Select({
     value,
     onValueChange,
@@ -24,8 +26,15 @@ export function Select({
     disabled,
     className,
 }: SelectProps) {
+    const toInternal = (v: string) => (v === '' ? EMPTY_SENTINEL : v);
+    const toExternal = (v: string) => (v === EMPTY_SENTINEL ? '' : v);
+
     return (
-        <RadixSelect.Root value={value} onValueChange={onValueChange} disabled={disabled}>
+        <RadixSelect.Root
+            value={toInternal(value)}
+            onValueChange={(v) => onValueChange(toExternal(v))}
+            disabled={disabled}
+        >
             <RadixSelect.Trigger
                 className={cn(
                     'flex h-10 w-full items-center justify-between rounded-xl border border-neutral-200 bg-white px-3 py-2 text-sm',
@@ -51,7 +60,7 @@ export function Select({
                         {options.map((opt) => (
                             <RadixSelect.Item
                                 key={opt.value}
-                                value={opt.value}
+                                value={toInternal(opt.value)}
                                 className={cn(
                                     'relative flex cursor-pointer items-center rounded-lg px-8 py-2 text-sm outline-none',
                                     'hover:bg-primary-50 hover:text-primary-700',

@@ -37,7 +37,8 @@ administrasi BK di SMA. Satu ekosistem visual & teknis dengan `smansaka-inventar
 - ✅ **Fase 4 — Layanan BK** SELESAI (2026-04-22). Konseling individual & kelompok, bimbingan klasikal, home visit (tanda tangan digital + PDF berita acara), konferensi kasus, referral + PDF surat rujukan.
 - ✅ **Fase 5 — Instrumen BK** SELESAI (2026-04-23). AKPD (50 butir, 4 bidang), DCM (240 butir, 12 topik), Sosiometri (SVG sociogram circular), RIASEC (48 butir, kode Holland + rekomendasi jurusan).
 - 🟢 **Fase 6 — Program & Laporan** SELESAI (2026-04-23). Dashboard analitik Recharts, RPL BK (CRUD + PDF), Laporan Bulanan/Semester/Tahunan (PDF + Excel 7-sheet), Program Tahunan (generator dari AKPD), Program Semesteran (jadwal mingguan). **Tersisa item butuh infrastruktur eksternal**: notifikasi email (SMTP), portal siswa/ortu (guard baru), API Sanctum (MoU antar-aplikasi).
-- Dokumentasi lengkap ada di `doc/books/` (Buku 1–4).
+- ✅ **Pasca-Fase 6 — Perbaikan & Peningkatan** (2026-04-22 s.d. 2026-04-23). Profile modal tombol Eye di `Students/Index` & `StudentGuidance/Index` (foto + data siswa + kartu orang tua — row-click dihapus dari StudentGuidance karena mengganggu tombol aksi). Komponen `Lightbox` berbasis Radix nested Dialog (`resources/js/Components/ui/Lightbox.tsx`) menggantikan raw `div` di 3 halaman — Escape & klik backdrop tidak menutup Dialog induk. Fix bug `router.delete` 3-arg (17 file, Inertia v3 hanya terima 2 arg). Fix `StudentGuidance::$table = 'student_guidance'` (Laravel auto-pluralize salah). **HomeVisit enhancements**: field `location` + `address` (migrasi), field `companions` JSON array (useFieldArray, dual-mode per-baris "Pilih Guru" dari tabel `teachers` / "Input Manual"), fix serialisasi FormData companions (`companions[i][name]`), fix `watch()` vs `companionFields[idx]?.name` (stale value pada controlled select). **Combobox pencarian siswa** (filter kelas + debounced AJAX `/students/lookup`) diterapkan di: `HomeVisit/Create`, `HomeVisit/Edit`, `Counseling/Individual/Create`, `Cases/Create`, `Referrals/Create`, `StudentViolations/Index` (Create dialog) — semua menggantikan Select dropdown statis. **Sidebar upgrade**: icon warna per seksi (pill `h-7 w-7 rounded-lg` untuk section header, ikon polos berwarna untuk child), default semua submenu tertutup — seksi yang berisi halaman aktif otomatis terbuka (`useState(hasActiveChild)`). **Modul Sistem** (`/system`, `SystemController`): 4-tab page — Pengguna (CRUD user + toggle grup), Grup & Akses (matrix hak akses baca/tulis per modul per grup), Branding (site_name/site_short_name/school_name/school_address), Log Aktivitas (Spatie log paginated). Bug fix: prop `branding` dari SystemController diganti `settings` karena bentrok dengan shared prop `branding` di HandleInertiaRequests. `Pagination` component pakai `meta` + `onPageChange`, bukan `data`.
+- Dokumentasi lengkap ada di `doc/books/` (Buku 1–8).
 
 ## Warna & Tema (konsisten dengan smansaka-inventaris)
 
@@ -234,8 +235,9 @@ composer dev
 ### Sidebar
 - Background putih, border kanan
 - Brand card gradient teal di atas ("Bimbingan & Konseling" + "SMAN 1 Kabanjahe")
-- Dashboard standalone
-- Section Layanan, Kasus, Instrumen, Program (collapsible)
+- Dashboard standalone, section collapsible
+- **Icon section**: pill `h-7 w-7 rounded-lg flex items-center justify-center` dengan warna per seksi (`iconBg` field di `NavItem`). Child item: ikon polos berwarna (`childIconColor` field), putih saat aktif.
+- **Default tertutup**: semua submenu default closed; seksi berisi halaman aktif otomatis terbuka via `useState(hasActiveChild)`.
 - Badge tahun ajaran aktif di top bar
 - Tombol Keluar di bawah
 
@@ -253,6 +255,19 @@ composer dev
 - Drag & drop zone untuk file upload
 - Submit: `rounded-xl bg-primary-600` + loading spinner
 - Error field inline, toast Sonner untuk error general
+
+### Konvensi Combobox Siswa
+- Semua form yang memilih siswa pakai combobox AJAX — **jangan** Select dropdown statis (beban memori).
+- Pattern: filter kelas (Select `w-44`) + input debounced 300 ms → GET `/students/lookup?q=&class_id=` → dropdown hasil.
+- Controller kirim `classes` (bukan `students`); data siswa diambil saat user mengetik.
+- State yang diperlukan: `classFilter`, `query`, `results`, `showDropdown`, `selectedStudent`, `comboRef`.
+- Gunakan `watch(\`companions.${idx}.name\`)` untuk nilai live di controlled select `useFieldArray` — bukan `fields[idx]?.name` (stale).
+- Array field (companions, dll.) di FormData: loop manual `fd.append(\`companions[\${i}][name]\`, ...)` — jangan `String(array)`.
+
+### Konvensi Lightbox (foto fullscreen)
+- Selalu gunakan `<Lightbox src={url} onClose={...} />` dari `@/Components/ui/Lightbox` — **jangan** pakai raw `div fixed inset-0`
+- Lightbox berbasis `RadixDialog.Root` (nested dialog) → Escape pertama menutup lightbox, bukan Dialog induk
+- Profile modal: dibuka via tombol Eye (bukan row-click) — `fetch('/students/{id}/profile')` → `setProfile(data)` + `setProfileOpen(true)`. Row-click dihindari karena mengganggu tombol aksi di kolom kanan.
 
 ## File Statis
 

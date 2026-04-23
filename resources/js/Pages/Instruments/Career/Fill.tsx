@@ -8,6 +8,8 @@ import { Badge } from '@/Components/ui/Badge';
 import { Textarea } from '@/Components/ui/Textarea';
 import { Label } from '@/Components/ui/Label';
 import { PageProps, Student, AcademicYear } from '@/types';
+import { FormErrorModal } from '@/Components/ui/FormErrorModal';
+import { useFormError } from '@/hooks/useFormError';
 
 interface CareerItem {
     id: number;
@@ -31,6 +33,7 @@ const SCALE_LABELS = [
 ];
 
 export default function CareerFill({ student, items, academic_year }: Props) {
+    const { errorOpen, setErrorOpen, formErrors, handleError } = useFormError();
     const [answers, setAnswers] = useState<Record<number, number>>({});
     const [notes, setNotes] = useState('');
     const [processing, setProcessing] = useState(false);
@@ -71,7 +74,7 @@ export default function CareerFill({ student, items, academic_year }: Props) {
             },
             {
                 onSuccess: () => toast.success('Hasil asesmen tersimpan.'),
-                onError: () => toast.error('Terjadi kesalahan.'),
+                onError: handleError,
                 onFinish: () => setProcessing(false),
             },
         );
@@ -179,6 +182,7 @@ export default function CareerFill({ student, items, academic_year }: Props) {
                     </Button>
                 </div>
             </div>
+            <FormErrorModal open={errorOpen} onOpenChange={setErrorOpen} errors={formErrors} />
         </AuthenticatedLayout>
     );
 }

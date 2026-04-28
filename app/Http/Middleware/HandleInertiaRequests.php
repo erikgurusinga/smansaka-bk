@@ -21,16 +21,11 @@ class HandleInertiaRequests extends Middleware
     public function share(Request $request): array
     {
         return array_merge(parent::share($request), [
-            'auth' => [
-                'user' => $request->user()?->only([
-                    'id',
-                    'username',
-                    'name',
-                    'email',
-                    'photo',
-                    'position',
-                    'groups',
-                ]),
+            'auth' => fn () => [
+                'user' => $request->user() ? array_merge(
+                    $request->user()->only(['id', 'username', 'name', 'email', 'photo', 'position', 'groups']),
+                    ['photo_url' => $request->user()->photo_url]
+                ) : null,
             ],
             'permissions' => fn () => $this->getPermissions($request),
             'branding' => fn () => $this->getBranding(),
@@ -71,14 +66,19 @@ class HandleInertiaRequests extends Middleware
 
     protected function getBranding(): array
     {
-        $keys = ['site_name', 'site_short_name', 'logo', 'favicon'];
+        $keys = ['site_name', 'site_short_name', 'logo', 'favicon', 'footer_text', 'school_name'];
         $settings = Setting::whereIn('key', $keys)->pluck('value', 'key');
+
+        $logo = $settings->get('logo');
+        $favicon = $settings->get('favicon');
 
         return [
             'site_name' => $settings->get('site_name') ?? config('app.name'),
             'site_short_name' => $settings->get('site_short_name') ?? 'BK SMANSAKA',
-            'logo' => $settings->get('logo'),
-            'favicon' => $settings->get('favicon'),
+            'logo' => $logo ? asset('storage/'.$logo) : null,
+            'favicon' => $favicon ? asset('storage/'.$favicon) : null,
+            'footer_text' => $settings->get('footer_text') ?? '',
+            'school_name' => $settings->get('school_name') ?? '',
         ];
     }
 

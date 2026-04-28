@@ -4,6 +4,7 @@ export interface User {
     name: string;
     email: string | null;
     photo: string | null;
+    photo_url: string | null;
     position: string | null;
     groups: number[] | null;
 }
@@ -18,6 +19,8 @@ export interface Branding {
     site_short_name: string;
     logo: string | null;
     favicon: string | null;
+    footer_text: string;
+    school_name: string;
 }
 
 export interface AcademicYear {

@@ -66,6 +66,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::put('profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
+    Route::post('profile/photo', [ProfileController::class, 'updatePhoto'])->name('profile.photo');
+    Route::delete('profile/photo', [ProfileController::class, 'removePhoto'])->name('profile.photo.remove');
 
     /*
     |----------------------------------------------------------------------
@@ -416,5 +418,7 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('system/users/{user}', [SystemController::class, 'destroyUser'])->name('system.users.destroy');
         Route::put('system/groups/{group}/access', [SystemController::class, 'updateGroupAccess'])->name('system.groups.access');
         Route::post('system/branding', [SystemController::class, 'updateBranding'])->name('system.branding.update');
+        Route::post('system/branding/logo', [SystemController::class, 'updateLogo'])->name('system.branding.logo');
+        Route::post('system/branding/favicon', [SystemController::class, 'updateFavicon'])->name('system.branding.favicon');
     });
 });

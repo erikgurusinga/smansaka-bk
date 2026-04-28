@@ -16,6 +16,13 @@ import {
     X,
     Eye,
     EyeOff,
+    School,
+    ImageIcon,
+    GraduationCap,
+    Globe,
+    Phone,
+    Mail,
+    UserCog,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -33,6 +40,8 @@ import { Pagination } from '@/Components/ui/Pagination';
 import { EmptyState } from '@/Components/ui/EmptyState';
 import { PageProps, PaginatedData } from '@/types';
 import { cn } from '@/lib/utils';
+import { FileDropZone } from '@/Components/ui/FileDropZone';
+import { Textarea } from '@/Components/ui/Textarea';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -106,8 +115,17 @@ type UserFormData = z.infer<typeof userSchema>;
 const brandingSchema = z.object({
     site_name: z.string().min(1, 'Wajib diisi'),
     site_short_name: z.string().min(1, 'Wajib diisi'),
+    footer_text: z.string().optional(),
     school_name: z.string().min(1, 'Wajib diisi'),
     school_address: z.string().optional(),
+    npsn: z.string().optional(),
+    school_phone: z.string().optional(),
+    school_email: z.string().email('Format email tidak valid').optional().or(z.literal('')),
+    school_website: z.string().optional(),
+    principal_name: z.string().optional(),
+    principal_nip: z.string().optional(),
+    coordinator_name: z.string().optional(),
+    coordinator_nip: z.string().optional(),
 });
 type BrandingFormData = z.infer<typeof brandingSchema>;
 
@@ -118,7 +136,7 @@ type TabKey = 'users' | 'groups' | 'branding' | 'log';
 const TABS: { key: TabKey; label: string; icon: React.ReactNode }[] = [
     { key: 'users', label: 'Pengguna', icon: <Users className="h-4 w-4" /> },
     { key: 'groups', label: 'Grup & Akses', icon: <ShieldCheck className="h-4 w-4" /> },
-    { key: 'branding', label: 'Branding', icon: <Palette className="h-4 w-4" /> },
+    { key: 'branding', label: 'Profil Sekolah', icon: <Palette className="h-4 w-4" /> },
     { key: 'log', label: 'Log Aktivitas', icon: <ScrollText className="h-4 w-4" /> },
 ];
 
@@ -782,6 +800,12 @@ function GroupsTab({ groups, modules }: { groups: SystemGroup[]; modules: System
 // ─── Branding Tab ─────────────────────────────────────────────────────────────
 
 function BrandingTab({ settings }: { settings: Record<string, BrandingField> }) {
+    const [logoUploading, setLogoUploading] = useState(false);
+    const [faviconUploading, setFaviconUploading] = useState(false);
+
+    const logoUrl = settings.logo?.value ? `/storage/${settings.logo.value}` : null;
+    const faviconUrl = settings.favicon?.value ? `/storage/${settings.favicon.value}` : null;
+
     const {
         register,
         handleSubmit,
@@ -791,57 +815,253 @@ function BrandingTab({ settings }: { settings: Record<string, BrandingField> }) 
         defaultValues: {
             site_name: settings.site_name?.value ?? '',
             site_short_name: settings.site_short_name?.value ?? '',
+            footer_text: settings.footer_text?.value ?? '',
             school_name: settings.school_name?.value ?? '',
             school_address: settings.school_address?.value ?? '',
+            npsn: settings.npsn?.value ?? '',
+            school_phone: settings.school_phone?.value ?? '',
+            school_email: settings.school_email?.value ?? '',
+            school_website: settings.school_website?.value ?? '',
+            principal_name: settings.principal_name?.value ?? '',
+            principal_nip: settings.principal_nip?.value ?? '',
+            coordinator_name: settings.coordinator_name?.value ?? '',
+            coordinator_nip: settings.coordinator_nip?.value ?? '',
         },
     });
 
     const onSubmit = (data: BrandingFormData) => {
         router.post(route('system.branding.update'), data, {
-            onSuccess: () => toast.success('Branding disimpan.'),
+            onSuccess: () => toast.success('Pengaturan berhasil disimpan.'),
             onError: (e) => toast.error(Object.values(e)[0] as string),
         });
     };
 
+    const uploadLogo = (file: File) => {
+        setLogoUploading(true);
+        router.post(
+            route('system.branding.logo'),
+            { logo: file },
+            {
+                forceFormData: true,
+                onSuccess: () => toast.success('Logo berhasil diunggah.'),
+                onError: () => toast.error('Gagal mengunggah logo.'),
+                onFinish: () => setLogoUploading(false),
+            },
+        );
+    };
+
+    const uploadFavicon = (file: File) => {
+        setFaviconUploading(true);
+        router.post(
+            route('system.branding.favicon'),
+            { favicon: file },
+            {
+                forceFormData: true,
+                onSuccess: () => toast.success('Favicon berhasil diunggah.'),
+                onError: () => toast.error('Gagal mengunggah favicon.'),
+                onFinish: () => setFaviconUploading(false),
+            },
+        );
+    };
+
     return (
-        <div className="mx-auto max-w-xl rounded-2xl bg-white p-6 shadow-sm ring-1 ring-neutral-100">
-            <h2 className="mb-4 font-semibold text-neutral-900">Informasi Sekolah & Aplikasi</h2>
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <div>
-                    <Label>Nama Aplikasi</Label>
-                    <Input
-                        {...register('site_name')}
-                        className="mt-1"
-                        placeholder="Sistem Informasi BK..."
-                    />
-                    <InputError message={errors.site_name?.message} />
+        <div className="space-y-5">
+            {/* Section 1 — Identitas Visual */}
+            <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-neutral-100">
+                <div className="mb-5 flex items-center gap-2">
+                    <div className="bg-primary-50 flex h-8 w-8 items-center justify-center rounded-lg">
+                        <ImageIcon className="text-primary-600 h-4 w-4" />
+                    </div>
+                    <h2 className="font-semibold text-neutral-900">Identitas Visual</h2>
                 </div>
-                <div>
-                    <Label>Nama Singkat</Label>
-                    <Input
-                        {...register('site_short_name')}
-                        className="mt-1"
-                        placeholder="BK SMANSAKA"
-                    />
-                    <InputError message={errors.site_short_name?.message} />
+                <div className="grid gap-6 sm:grid-cols-2">
+                    <div className="space-y-2">
+                        <Label>Logo Sekolah</Label>
+                        <FileDropZone
+                            shape="wide"
+                            currentUrl={logoUrl}
+                            onFile={uploadLogo}
+                            uploading={logoUploading}
+                            label="Klik atau seret logo ke sini"
+                            hint="PNG/SVG transparan, maks 2 MB"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Favicon</Label>
+                        <FileDropZone
+                            shape="square"
+                            currentUrl={faviconUrl}
+                            onFile={uploadFavicon}
+                            uploading={faviconUploading}
+                            label="Klik atau seret favicon"
+                            hint="ICO/PNG 32×32 atau 64×64, maks 2 MB"
+                        />
+                    </div>
                 </div>
-                <div>
-                    <Label>Nama Sekolah</Label>
-                    <Input
-                        {...register('school_name')}
-                        className="mt-1"
-                        placeholder="SMA Negeri 1..."
-                    />
-                    <InputError message={errors.school_name?.message} />
-                </div>
-                <div>
-                    <Label>Alamat Sekolah</Label>
-                    <Input {...register('school_address')} className="mt-1" placeholder="Jl. ..." />
+            </div>
+
+            {/* Sections 2–4 — text fields */}
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                {/* Section 2 — Identitas Aplikasi */}
+                <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-neutral-100">
+                    <div className="mb-5 flex items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-50">
+                            <Palette className="h-4 w-4 text-amber-600" />
+                        </div>
+                        <h2 className="font-semibold text-neutral-900">Identitas Aplikasi</h2>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <Label>Nama Aplikasi</Label>
+                            <Input
+                                {...register('site_name')}
+                                className="mt-1"
+                                placeholder="Sistem Informasi BK..."
+                            />
+                            <InputError message={errors.site_name?.message} />
+                        </div>
+                        <div>
+                            <Label>Nama Singkat</Label>
+                            <Input
+                                {...register('site_short_name')}
+                                className="mt-1"
+                                placeholder="BK SMANSAKA"
+                            />
+                            <InputError message={errors.site_short_name?.message} />
+                        </div>
+                        <div className="sm:col-span-2">
+                            <Label>Teks Footer</Label>
+                            <Textarea
+                                {...register('footer_text')}
+                                className="mt-1"
+                                rows={2}
+                                placeholder="© 2026 SMA Negeri 1 Kabanjahe. Hak cipta dilindungi."
+                            />
+                        </div>
+                    </div>
                 </div>
 
-                <div className="pt-2">
-                    <Button type="submit" disabled={isSubmitting || !isDirty} className="w-full">
-                        Simpan Branding
+                {/* Section 3 — Identitas Sekolah */}
+                <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-neutral-100">
+                    <div className="mb-5 flex items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50">
+                            <School className="h-4 w-4 text-emerald-600" />
+                        </div>
+                        <h2 className="font-semibold text-neutral-900">Identitas Sekolah</h2>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="sm:col-span-2">
+                            <Label>Nama Sekolah</Label>
+                            <Input
+                                {...register('school_name')}
+                                className="mt-1"
+                                placeholder="SMA Negeri 1 Kabanjahe"
+                            />
+                            <InputError message={errors.school_name?.message} />
+                        </div>
+                        <div className="sm:col-span-2">
+                            <Label>Alamat Sekolah</Label>
+                            <Textarea
+                                {...register('school_address')}
+                                className="mt-1"
+                                rows={2}
+                                placeholder="Jl. Veteran No. 1, Kabanjahe..."
+                            />
+                        </div>
+                        <div>
+                            <Label>NPSN</Label>
+                            <Input {...register('npsn')} className="mt-1" placeholder="10200001" />
+                        </div>
+                        <div>
+                            <Label>Nomor Telepon Sekolah</Label>
+                            <div className="relative mt-1">
+                                <Phone className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                                <Input
+                                    {...register('school_phone')}
+                                    className="pl-9"
+                                    placeholder="0628-XXXXXX"
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <Label>Email Sekolah</Label>
+                            <div className="relative mt-1">
+                                <Mail className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                                <Input
+                                    {...register('school_email')}
+                                    className="pl-9"
+                                    placeholder="info@sman1kabanjahe.sch.id"
+                                />
+                            </div>
+                            <InputError message={errors.school_email?.message} />
+                        </div>
+                        <div>
+                            <Label>Website Sekolah</Label>
+                            <div className="relative mt-1">
+                                <Globe className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                                <Input
+                                    {...register('school_website')}
+                                    className="pl-9"
+                                    placeholder="https://sman1kabanjahe.sch.id"
+                                />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Section 4 — Pejabat Sekolah */}
+                <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-neutral-100">
+                    <div className="mb-5 flex items-center gap-2">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-50">
+                            <UserCog className="h-4 w-4 text-violet-600" />
+                        </div>
+                        <h2 className="font-semibold text-neutral-900">Pejabat Sekolah</h2>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        <div>
+                            <Label>Nama Kepala Sekolah</Label>
+                            <div className="relative mt-1">
+                                <GraduationCap className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                                <Input
+                                    {...register('principal_name')}
+                                    className="pl-9"
+                                    placeholder="Drs. ..."
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <Label>NIP Kepala Sekolah</Label>
+                            <Input
+                                {...register('principal_nip')}
+                                className="mt-1"
+                                placeholder="19XXXXXXXXXXXXXX"
+                            />
+                        </div>
+                        <div>
+                            <Label>Nama Koordinator BK</Label>
+                            <div className="relative mt-1">
+                                <UserCog className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-400" />
+                                <Input
+                                    {...register('coordinator_name')}
+                                    className="pl-9"
+                                    placeholder="..."
+                                />
+                            </div>
+                        </div>
+                        <div>
+                            <Label>NIP Koordinator BK</Label>
+                            <Input
+                                {...register('coordinator_nip')}
+                                className="mt-1"
+                                placeholder="19XXXXXXXXXXXXXX"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex justify-end">
+                    <Button type="submit" disabled={isSubmitting || !isDirty} className="px-8">
+                        Simpan Pengaturan
                     </Button>
                 </div>
             </form>

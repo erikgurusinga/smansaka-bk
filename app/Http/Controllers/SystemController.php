@@ -9,7 +9,9 @@ use App\Models\User;
 use App\Models\UserGroup;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -17,6 +19,14 @@ use Spatie\Activitylog\Models\Activity;
 
 class SystemController extends Controller
 {
+    private const TEXT_SETTING_KEYS = [
+        'site_name', 'site_short_name', 'footer_text',
+        'school_name', 'school_address', 'npsn',
+        'school_phone', 'school_email', 'school_website',
+        'principal_name', 'principal_nip',
+        'coordinator_name', 'coordinator_nip',
+    ];
+
     public function index(Request $request): Response
     {
         $users = User::orderBy('id')
@@ -41,7 +51,7 @@ class SystemController extends Controller
         $modules = Module::orderBy('sort_order')
             ->get(['id', 'name', 'slug', 'parent_slug', 'is_active']);
 
-        $settings = Setting::whereIn('key', ['site_name', 'site_short_name', 'school_name', 'school_address'])
+        $settings = Setting::whereIn('key', self::TEXT_SETTING_KEYS)
             ->get()
             ->mapWithKeys(fn ($s) => [$s->key => ['value' => $s->value ?? '', 'label' => $s->label]]);
 
@@ -162,14 +172,50 @@ class SystemController extends Controller
         $data = $request->validate([
             'site_name' => 'required|string|max:100',
             'site_short_name' => 'required|string|max:50',
+            'footer_text' => 'nullable|string|max:500',
             'school_name' => 'required|string|max:100',
-            'school_address' => 'nullable|string|max:255',
+            'school_address' => 'nullable|string|max:500',
+            'npsn' => 'nullable|string|max:20',
+            'school_phone' => 'nullable|string|max:30',
+            'school_email' => 'nullable|email|max:100',
+            'school_website' => 'nullable|string|max:100',
+            'principal_name' => 'nullable|string|max:100',
+            'principal_nip' => 'nullable|string|max:30',
+            'coordinator_name' => 'nullable|string|max:100',
+            'coordinator_nip' => 'nullable|string|max:30',
         ]);
 
         foreach ($data as $key => $value) {
             Setting::set($key, $value ?? '');
         }
 
-        return back()->with('success', 'Pengaturan branding disimpan.');
+        return back()->with('success', 'Profil sekolah berhasil disimpan.');
+    }
+
+    public function updateLogo(Request $request): RedirectResponse
+    {
+        $request->validate(['logo' => 'required|image|mimes:jpg,jpeg,png,svg,webp|max:2048']);
+        $this->storeFile('logo', $request->file('logo'));
+
+        return back()->with('success', 'Logo berhasil diperbarui.');
+    }
+
+    public function updateFavicon(Request $request): RedirectResponse
+    {
+        $request->validate(['favicon' => 'required|image|mimes:jpg,jpeg,png,ico,webp|max:512']);
+        $this->storeFile('favicon', $request->file('favicon'));
+
+        return back()->with('success', 'Favicon berhasil diperbarui.');
+    }
+
+    private function storeFile(string $key, UploadedFile $file): void
+    {
+        $old = Setting::where('key', $key)->value('value');
+        if ($old) {
+            Storage::disk('public')->delete($old);
+        }
+
+        $path = $file->store('branding', 'public');
+        Setting::set($key, $path);
     }
 }

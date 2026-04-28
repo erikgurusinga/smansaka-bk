@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -23,6 +24,7 @@ class ProfileController extends Controller
                 'email' => $user->email,
                 'position' => $user->position,
                 'phone' => $user->phone,
+                'photo_url' => $user->photo_url,
             ],
         ]);
     }
@@ -57,5 +59,35 @@ class ProfileController extends Controller
         ]);
 
         return back()->with('success', 'Password berhasil diubah.');
+    }
+
+    public function updatePhoto(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'photo' => 'required|image|mimes:jpg,jpeg,png,gif,webp|max:2048',
+        ]);
+
+        $user = auth()->user();
+
+        if ($user->photo) {
+            Storage::disk('public')->delete($user->photo);
+        }
+
+        $path = $request->file('photo')->store('users', 'public');
+        $user->update(['photo' => $path]);
+
+        return back()->with('success', 'Foto profil berhasil diperbarui.');
+    }
+
+    public function removePhoto(): RedirectResponse
+    {
+        $user = auth()->user();
+
+        if ($user->photo) {
+            Storage::disk('public')->delete($user->photo);
+            $user->update(['photo' => null]);
+        }
+
+        return back()->with('success', 'Foto profil dihapus.');
     }
 }

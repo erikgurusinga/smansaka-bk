@@ -14,12 +14,14 @@ import {
     EyeOff,
     Shield,
     CheckCircle2,
+    Camera,
 } from 'lucide-react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Button } from '@/Components/ui/Button';
 import { Input } from '@/Components/ui/Input';
 import { Label } from '@/Components/ui/Label';
 import { InputError } from '@/Components/ui/InputError';
+import { FileDropZone } from '@/Components/ui/FileDropZone';
 import { PageProps } from '@/types';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -31,6 +33,7 @@ interface ProfileUser {
     email: string | null;
     position: string | null;
     phone: string | null;
+    photo_url: string | null;
 }
 
 interface Props extends PageProps {
@@ -76,10 +79,20 @@ export default function ProfileEdit() {
                 </p>
             </div>
 
-            {/* Avatar + info singkat */}
+            {/* Hero card */}
             <div className="from-primary-600 to-primary-700 mb-6 flex items-center gap-4 rounded-2xl bg-gradient-to-r p-5 text-white shadow-sm">
-                <div className="flex h-14 w-14 items-center justify-center rounded-full bg-white/20 text-2xl font-bold uppercase">
-                    {user.name.charAt(0)}
+                <div className="relative shrink-0">
+                    {user.photo_url ? (
+                        <img
+                            src={user.photo_url}
+                            alt={user.name}
+                            className="h-16 w-16 rounded-full object-cover ring-2 ring-white/30"
+                        />
+                    ) : (
+                        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-white/20 text-2xl font-bold uppercase">
+                            {user.name.charAt(0)}
+                        </div>
+                    )}
                 </div>
                 <div>
                     <p className="text-lg leading-tight font-semibold">{user.name}</p>
@@ -89,10 +102,78 @@ export default function ProfileEdit() {
             </div>
 
             <div className="grid gap-6 lg:grid-cols-2">
-                <InfoSection user={user} />
+                <div className="space-y-6">
+                    <PhotoSection user={user} />
+                    <InfoSection user={user} />
+                </div>
                 <PasswordSection />
             </div>
         </AuthenticatedLayout>
+    );
+}
+
+// ─── Photo Section ────────────────────────────────────────────────────────────
+
+function PhotoSection({ user }: { user: ProfileUser }) {
+    const [uploading, setUploading] = useState(false);
+
+    const handleFile = (file: File) => {
+        setUploading(true);
+        router.post(
+            route('profile.photo'),
+            { photo: file },
+            {
+                forceFormData: true,
+                onSuccess: () => toast.success('Foto profil diperbarui.'),
+                onError: (e) => toast.error(Object.values(e)[0] as string),
+                onFinish: () => setUploading(false),
+            },
+        );
+    };
+
+    const handleRemove = () => {
+        router.delete(route('profile.photo.remove'), {
+            onSuccess: () => toast.success('Foto profil dihapus.'),
+            onError: () => toast.error('Gagal menghapus foto.'),
+        });
+    };
+
+    return (
+        <div className="rounded-2xl bg-white shadow-sm ring-1 ring-neutral-100">
+            <div className="flex items-center gap-3 border-b border-neutral-100 px-6 py-4">
+                <div className="bg-primary-50 flex h-9 w-9 items-center justify-center rounded-lg">
+                    <Camera className="text-primary-600 h-5 w-5" />
+                </div>
+                <div>
+                    <h2 className="font-semibold text-neutral-900">Foto Profil</h2>
+                    <p className="text-xs text-neutral-500">JPG, PNG, WebP — maks. 2 MB</p>
+                </div>
+            </div>
+
+            <div className="flex items-center gap-6 p-6">
+                <FileDropZone
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    maxSizeMb={2}
+                    currentUrl={user.photo_url}
+                    shape="circle"
+                    onFile={handleFile}
+                    onRemove={user.photo_url ? handleRemove : undefined}
+                    label="Unggah foto"
+                    uploading={uploading}
+                    className="shrink-0"
+                />
+                <div className="space-y-1 text-sm text-neutral-500">
+                    <p className="font-medium text-neutral-700">Cara mengganti foto:</p>
+                    <ul className="list-inside list-disc space-y-0.5 text-xs">
+                        <li>Klik lingkaran foto</li>
+                        <li>Atau seret & lepas file ke lingkaran</li>
+                        <li>
+                            Klik <span className="font-medium text-red-500">×</span> untuk menghapus
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
     );
 }
 

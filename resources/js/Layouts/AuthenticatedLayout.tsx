@@ -434,6 +434,13 @@ export default function AuthenticatedLayout({
 
                 {/* Content */}
                 <main className="flex-1 p-4 md:p-8">{children}</main>
+
+                {/* Footer */}
+                {branding.footer_text && (
+                    <footer className="border-t border-neutral-100 bg-white px-4 py-3 text-center text-xs text-neutral-400 md:px-8">
+                        {branding.footer_text}
+                    </footer>
+                )}
             </div>
         </div>
     );

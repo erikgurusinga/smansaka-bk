@@ -14,6 +14,8 @@ import {
     KeyRound,
     Check,
     X,
+    Eye,
+    EyeOff,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -93,6 +95,7 @@ const userSchema = z.object({
     name: z.string().min(1, 'Nama wajib diisi'),
     email: z.string().email('Format email tidak valid').optional().or(z.literal('')),
     password: z.string().min(8, 'Minimal 8 karakter').optional().or(z.literal('')),
+    password_confirmation: z.string().optional().or(z.literal('')),
     position: z.string().optional(),
     phone: z.string().optional(),
     groups: z.array(z.number()),
@@ -199,19 +202,32 @@ function UsersTab({ users, groups }: { users: SystemUser[]; groups: SystemGroup[
     const [dialogOpen, setDialogOpen] = useState(false);
     const [editTarget, setEditTarget] = useState<SystemUser | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<SystemUser | null>(null);
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirm, setShowConfirm] = useState(false);
 
     const groupOptions = groups.map((g) => ({ value: String(g.id), label: g.name }));
 
-    const schema = z.object({
-        username: z.string().min(3, 'Minimal 3 karakter'),
-        name: z.string().min(1, 'Nama wajib diisi'),
-        email: z.string().email('Format email tidak valid').optional().or(z.literal('')),
-        password: z.string().min(8, 'Minimal 8 karakter').optional().or(z.literal('')),
-        position: z.string().optional(),
-        phone: z.string().optional(),
-        groups: z.array(z.number()),
-        is_active: z.boolean(),
-    });
+    const schema = z
+        .object({
+            username: z.string().min(3, 'Minimal 3 karakter'),
+            name: z.string().min(1, 'Nama wajib diisi'),
+            email: z.string().email('Format email tidak valid').optional().or(z.literal('')),
+            password: z.string().min(8, 'Minimal 8 karakter').optional().or(z.literal('')),
+            password_confirmation: z.string().optional().or(z.literal('')),
+            position: z.string().optional(),
+            phone: z.string().optional(),
+            groups: z.array(z.number()),
+            is_active: z.boolean(),
+        })
+        .superRefine((data, ctx) => {
+            if (data.password && data.password !== data.password_confirmation) {
+                ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
+                    message: 'Konfirmasi password tidak cocok',
+                    path: ['password_confirmation'],
+                });
+            }
+        });
 
     const {
         register,
@@ -226,11 +242,14 @@ function UsersTab({ users, groups }: { users: SystemUser[]; groups: SystemGroup[
 
     const openCreate = () => {
         setEditTarget(null);
+        setShowPassword(false);
+        setShowConfirm(false);
         reset({
             username: '',
             name: '',
             email: '',
             password: '',
+            password_confirmation: '',
             position: '',
             phone: '',
             groups: [],
@@ -241,11 +260,14 @@ function UsersTab({ users, groups }: { users: SystemUser[]; groups: SystemGroup[
 
     const openEdit = (u: SystemUser) => {
         setEditTarget(u);
+        setShowPassword(false);
+        setShowConfirm(false);
         reset({
             username: u.username,
             name: u.name,
             email: u.email ?? '',
             password: '',
+            password_confirmation: '',
             position: u.position ?? '',
             phone: u.phone ?? '',
             groups: u.groups ?? [],
@@ -263,11 +285,18 @@ function UsersTab({ users, groups }: { users: SystemUser[]; groups: SystemGroup[
     };
 
     const onSubmit = (data: UserFormData) => {
-        const payload = {
-            ...data,
+        const payload: Record<string, unknown> = {
+            username: data.username,
+            name: data.name,
             email: data.email || null,
-            password: data.password || undefined,
+            position: data.position,
+            phone: data.phone,
+            groups: data.groups,
+            is_active: data.is_active,
         };
+        if (data.password) {
+            payload.password = data.password;
+        }
 
         if (editTarget) {
             router.put(route('system.users.update', editTarget.id), payload, {
@@ -428,21 +457,71 @@ function UsersTab({ users, groups }: { users: SystemUser[]; groups: SystemGroup[
                                 {editTarget ? (
                                     <span className="flex items-center gap-1">
                                         <KeyRound className="h-3.5 w-3.5" />
-                                        Password Baru (kosongkan jika tidak diubah)
+                                        Password Baru
                                     </span>
                                 ) : (
-                                    'Password'
+                                    'Password *'
                                 )}
                             </Label>
-                            <Input
-                                {...register('password')}
-                                type="password"
-                                placeholder={editTarget ? '••••••••' : 'Min. 8 karakter'}
-                                className="mt-1"
-                            />
+                            <div className="relative mt-1">
+                                <Input
+                                    {...register('password')}
+                                    type={showPassword ? 'text' : 'password'}
+                                    placeholder={
+                                        editTarget
+                                            ? 'Kosongkan jika tidak diubah'
+                                            : 'Min. 8 karakter'
+                                    }
+                                    className="pr-10"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword((v) => !v)}
+                                    className="absolute top-1/2 right-3 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                                    tabIndex={-1}
+                                >
+                                    {showPassword ? (
+                                        <EyeOff className="h-4 w-4" />
+                                    ) : (
+                                        <Eye className="h-4 w-4" />
+                                    )}
+                                </button>
+                            </div>
                             <InputError message={errors.password?.message} />
                         </div>
                     </div>
+
+                    {/* Konfirmasi password — tampil saat ada isian password */}
+                    {watch('password') && (
+                        <div>
+                            <Label>Konfirmasi Password *</Label>
+                            <div className="relative mt-1">
+                                <Input
+                                    {...register('password_confirmation')}
+                                    type={showConfirm ? 'text' : 'password'}
+                                    placeholder="Ulangi password di atas"
+                                    className="pr-10"
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowConfirm((v) => !v)}
+                                    className="absolute top-1/2 right-3 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
+                                    tabIndex={-1}
+                                >
+                                    {showConfirm ? (
+                                        <EyeOff className="h-4 w-4" />
+                                    ) : (
+                                        <Eye className="h-4 w-4" />
+                                    )}
+                                </button>
+                                {watch('password_confirmation') &&
+                                    watch('password') === watch('password_confirmation') && (
+                                        <Check className="absolute top-1/2 right-9 h-4 w-4 -translate-y-1/2 text-green-500" />
+                                    )}
+                            </div>
+                            <InputError message={errors.password_confirmation?.message} />
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>

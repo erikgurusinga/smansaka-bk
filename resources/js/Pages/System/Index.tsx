@@ -173,7 +173,8 @@ function subjectLabel(type: string | null): string {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function SystemIndex() {
-    const { system_users, groups, modules, settings, activity_log } = usePage<Props>().props;
+    const { system_users, groups, modules, settings, activity_log, branding } =
+        usePage<Props>().props;
     const [tab, setTab] = useState<TabKey>('users');
 
     return (
@@ -208,7 +209,7 @@ export default function SystemIndex() {
 
             {tab === 'users' && <UsersTab users={system_users} groups={groups} />}
             {tab === 'groups' && <GroupsTab groups={groups} modules={modules} />}
-            {tab === 'branding' && <BrandingTab settings={settings} />}
+            {tab === 'branding' && <BrandingTab settings={settings} branding={branding} />}
             {tab === 'log' && <LogTab activityLog={activity_log} />}
         </AuthenticatedLayout>
     );
@@ -799,12 +800,19 @@ function GroupsTab({ groups, modules }: { groups: SystemGroup[]; modules: System
 
 // ─── Branding Tab ─────────────────────────────────────────────────────────────
 
-function BrandingTab({ settings }: { settings: Record<string, BrandingField> }) {
+function BrandingTab({
+    settings,
+    branding,
+}: {
+    settings: Record<string, BrandingField>;
+    branding: PageProps['branding'];
+}) {
     const [logoFile, setLogoFile] = useState<File | null>(null);
     const [faviconFile, setFaviconFile] = useState<File | null>(null);
 
-    const logoUrl = settings.logo?.value ? `/storage/${settings.logo.value}` : null;
-    const faviconUrl = settings.favicon?.value ? `/storage/${settings.favicon.value}` : null;
+    // Use full URLs from shared branding prop — these are always correct after save
+    const logoUrl = branding.logo ?? null;
+    const faviconUrl = branding.favicon ?? null;
 
     const {
         register,
@@ -838,6 +846,7 @@ function BrandingTab({ settings }: { settings: Record<string, BrandingField> }) 
 
         router.post(route('system.branding.update'), payload, {
             forceFormData: true,
+            preserveState: true,
             preserveScroll: true,
             onSuccess: () => {
                 setLogoFile(null);

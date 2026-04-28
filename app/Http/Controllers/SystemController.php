@@ -51,9 +51,10 @@ class SystemController extends Controller
         $modules = Module::orderBy('sort_order')
             ->get(['id', 'name', 'slug', 'parent_slug', 'is_active']);
 
-        $settings = Setting::whereIn('key', self::TEXT_SETTING_KEYS)
+        $allKeys = array_merge(self::TEXT_SETTING_KEYS, ['logo', 'favicon']);
+        $settings = Setting::whereIn('key', $allKeys)
             ->get()
-            ->mapWithKeys(fn ($s) => [$s->key => ['value' => $s->value ?? '', 'label' => $s->label]]);
+            ->mapWithKeys(fn ($s) => [$s->key => ['value' => $s->value ?? '', 'label' => $s->label ?? '']]);
 
         $activityLog = Activity::with('causer:id,name,username')
             ->latest()

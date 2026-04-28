@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\Auth;
@@ -19,7 +20,7 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'username' => ['required', 'string', 'max:50'],
+            'username' => ['required', 'string', 'max:100'],
             'password' => ['required', 'string'],
             'remember' => ['boolean'],
         ];
@@ -29,8 +30,19 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
+        $login = $this->input('username');
+        $username = $login;
+
+        // Jika input berbentuk email, cari username-nya terlebih dahulu
+        if (str_contains($login, '@')) {
+            $user = User::where('email', $login)->where('is_active', true)->value('username');
+            if ($user) {
+                $username = $user;
+            }
+        }
+
         $credentials = [
-            'username' => $this->input('username'),
+            'username' => $username,
             'password' => $this->input('password'),
             'is_active' => true,
         ];
@@ -39,7 +51,7 @@ class LoginRequest extends FormRequest
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'username' => __('Username atau password salah.'),
+                'username' => __('Username / email atau password salah.'),
             ]);
         }
 

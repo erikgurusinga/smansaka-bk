@@ -32,7 +32,7 @@ export default function Login() {
 
             <form onSubmit={submit} className="space-y-4">
                 <div>
-                    <Label htmlFor="username">Username</Label>
+                    <Label htmlFor="username">Username atau Email</Label>
                     <div className="relative mt-1">
                         <UserIcon className="absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-neutral-400" />
                         <input
@@ -43,6 +43,7 @@ export default function Login() {
                             autoFocus
                             value={data.username}
                             onChange={(e) => setData('username', e.target.value)}
+                            placeholder="username atau email@sekolah.id"
                             className="focus:border-primary-400 focus:ring-primary-100 flex h-11 w-full rounded-xl border border-neutral-200 bg-white py-2 pr-3 pl-9 text-sm focus:ring-4 focus:outline-none"
                             required
                         />

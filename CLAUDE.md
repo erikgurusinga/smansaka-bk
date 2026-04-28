@@ -219,10 +219,50 @@ composer dev
 
 ## Integrasi Ekosistem SMANSAKA
 
-- **sismansaka** (data siswa) — pull via API Sanctum (rencana)
+- **smansaka-admin** (HUB DATA MASTER) ✅ — pull siswa/guru/kelas/tahun-ajaran via API Sanctum (sudah aktif sejak 2026-04-25)
+- **sismansaka** (info sekolah) — akan migrasi data ke hub di kemudian hari
 - **smansaka-inventaris** (aset BK: ruang konseling, meja, dll)
 - **smansaka-perpustakaan** (rekam peminjaman buku BK)
 - **cbtakm-mobile** (data nilai CBT jika perlu untuk analisis kasus akademik)
+
+### Sinkronisasi Data Master dari smansaka-admin Hub
+
+Sejak 2026-04-25 BK tidak lagi memakai seeder lokal untuk siswa/guru/kelas/tahun-ajaran — pakai data dari Hub.
+
+⚠️ **STATUS DATA SAAT INI (2026-04-25 akhir hari): DUMMY**
+
+BK saat ini punya 120 student dengan NIS `2526001`–`2526120` hasil sync dari Hub yang juga masih isi seeder dummy. Bukan data sekolah real. Resume plan ada di `c:\laragon\www\smansaka-admin\CLAUDE.md` bagian "Resume Plan".
+
+**Saat Hub diisi data real (dari Dapodik):**
+1. Run `php artisan hub:sync` lagi — siswa/guru real akan ter-upsert.
+2. Cleanup 120 dummy: `App\Models\Student::where('nis','LIKE','2526%')->delete()` (atau identifikasi via cara lain kalau Dapodik kebetulan ada NIS yang sama).
+3. Verify count siswa = count Hub.
+
+
+**Setup `.env` BK:**
+```
+HUB_URL=http://smansaka-admin.test
+HUB_TOKEN=<token Sanctum dari Hub /system/tokens>
+HUB_TIMEOUT=15
+```
+
+**Command sync:**
+```bash
+php artisan hub:sync                       # sync semua: tahun ajaran, kelas, guru, siswa
+php artisan hub:sync --only=siswa          # sync subset
+php artisan hub:sync --only=kelas,guru     # sync beberapa
+```
+
+**File terkait:**
+- `config/hub.php` — config URL/token/timeout
+- `app/Services/HubClient.php` — HTTP client (Laravel Http facade, Bearer auth, auto-paginate)
+- `app/Console/Commands/HubSyncCommand.php` — perintah sync, mapping schema Hub → BK
+
+**Mapping schema** (Hub → BK):
+- `tahun_ajarans` → `academic_years` (BK 1 row per tahun, hanya yang aktif yang menang via sort)
+- `kelas` (`nama_kelas`, `tingkat`) → `classes` (`name`, `level`); `wali_kelas_id` SKIP (beda sistem user)
+- `gurus` → `teachers` (NIP sebagai natural key); `is_bk` di-derive dari `bidang_studi == 'Bimbingan Konseling'`
+- `siswa` → `students` (NIS sebagai natural key); `class_id` di-remap via lookup nama kelas; status `alumni` → `lulus`
 
 ## Desain UI (identik dengan smansaka-inventaris)
 

@@ -280,7 +280,15 @@ export default function AuthenticatedLayout({
                         className="from-primary-600 to-primary-800 block rounded-2xl bg-gradient-to-br p-4 text-white shadow-md"
                     >
                         <div className="flex items-center gap-3">
-                            <ApplicationLogo size={40} className="text-primary-700 bg-white" />
+                            {branding.logo ? (
+                                <img
+                                    src={branding.logo}
+                                    alt={branding.site_short_name}
+                                    className="h-10 w-10 rounded-xl bg-white object-contain p-0.5"
+                                />
+                            ) : (
+                                <ApplicationLogo size={40} className="text-primary-700 bg-white" />
+                            )}
                             <div>
                                 <h1 className="text-sm leading-tight font-semibold">
                                     {branding.site_short_name}

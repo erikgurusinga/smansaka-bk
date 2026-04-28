@@ -6,7 +6,8 @@
 
         <title inertia>{{ config('app.name', 'BK SMANSAKA') }}</title>
 
-        <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}" />
+        @php $faviconPath = \App\Models\Setting::where('key','favicon')->value('value'); @endphp
+        <link rel="icon" type="image/x-icon" href="{{ $faviconPath ? asset('storage/'.$faviconPath) : asset('favicon.ico') }}" />
         <link rel="manifest" href="{{ asset('manifest.webmanifest') }}" />
         <meta name="theme-color" content="#117481" />
 

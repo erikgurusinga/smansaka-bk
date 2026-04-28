@@ -800,8 +800,8 @@ function GroupsTab({ groups, modules }: { groups: SystemGroup[]; modules: System
 // ─── Branding Tab ─────────────────────────────────────────────────────────────
 
 function BrandingTab({ settings }: { settings: Record<string, BrandingField> }) {
-    const [logoUploading, setLogoUploading] = useState(false);
-    const [faviconUploading, setFaviconUploading] = useState(false);
+    const [logoFile, setLogoFile] = useState<File | null>(null);
+    const [faviconFile, setFaviconFile] = useState<File | null>(null);
 
     const logoUrl = settings.logo?.value ? `/storage/${settings.logo.value}` : null;
     const faviconUrl = settings.favicon?.value ? `/storage/${settings.favicon.value}` : null;
@@ -829,49 +829,27 @@ function BrandingTab({ settings }: { settings: Record<string, BrandingField> }) 
         },
     });
 
+    const hasChanges = isDirty || logoFile !== null || faviconFile !== null;
+
     const onSubmit = (data: BrandingFormData) => {
-        router.post(route('system.branding.update'), data, {
-            preserveState: true,
+        const payload: Record<string, unknown> = { ...data };
+        if (logoFile) payload.logo = logoFile;
+        if (faviconFile) payload.favicon = faviconFile;
+
+        router.post(route('system.branding.update'), payload, {
+            forceFormData: true,
             preserveScroll: true,
-            onSuccess: () => toast.success('Pengaturan berhasil disimpan.'),
+            onSuccess: () => {
+                setLogoFile(null);
+                setFaviconFile(null);
+                toast.success('Pengaturan berhasil disimpan.');
+            },
             onError: (e) => toast.error(Object.values(e)[0] as string),
         });
     };
 
-    const uploadLogo = (file: File) => {
-        setLogoUploading(true);
-        router.post(
-            route('system.branding.logo'),
-            { logo: file },
-            {
-                forceFormData: true,
-                preserveState: true,
-                preserveScroll: true,
-                onSuccess: () => toast.success('Logo berhasil diunggah.'),
-                onError: () => toast.error('Gagal mengunggah logo.'),
-                onFinish: () => setLogoUploading(false),
-            },
-        );
-    };
-
-    const uploadFavicon = (file: File) => {
-        setFaviconUploading(true);
-        router.post(
-            route('system.branding.favicon'),
-            { favicon: file },
-            {
-                forceFormData: true,
-                preserveState: true,
-                preserveScroll: true,
-                onSuccess: () => toast.success('Favicon berhasil diunggah.'),
-                onError: () => toast.error('Gagal mengunggah favicon.'),
-                onFinish: () => setFaviconUploading(false),
-            },
-        );
-    };
-
     return (
-        <div className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             {/* Section 1 — Identitas Visual */}
             <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-neutral-100">
                 <div className="mb-5 flex items-center gap-2">
@@ -879,6 +857,9 @@ function BrandingTab({ settings }: { settings: Record<string, BrandingField> }) 
                         <ImageIcon className="text-primary-600 h-4 w-4" />
                     </div>
                     <h2 className="font-semibold text-neutral-900">Identitas Visual</h2>
+                    <span className="ml-auto text-xs text-neutral-400">
+                        Pilih gambar lalu klik Simpan
+                    </span>
                 </div>
                 <div className="grid gap-6 sm:grid-cols-2">
                     <div className="space-y-2">
@@ -887,11 +868,15 @@ function BrandingTab({ settings }: { settings: Record<string, BrandingField> }) 
                             key={logoUrl ?? 'no-logo'}
                             shape="wide"
                             currentUrl={logoUrl}
-                            onFile={uploadLogo}
-                            uploading={logoUploading}
+                            onFile={setLogoFile}
                             label="Klik atau seret logo ke sini"
-                            hint="PNG/SVG transparan, maks 2 MB"
+                            hint="JPG/PNG/WebP transparan, maks 2 MB"
                         />
+                        {logoFile && (
+                            <p className="text-xs text-amber-600">
+                                Logo baru dipilih — klik Simpan untuk menyimpan
+                            </p>
+                        )}
                     </div>
                     <div className="space-y-2">
                         <Label>Favicon</Label>
@@ -899,17 +884,21 @@ function BrandingTab({ settings }: { settings: Record<string, BrandingField> }) 
                             key={faviconUrl ?? 'no-favicon'}
                             shape="square"
                             currentUrl={faviconUrl}
-                            onFile={uploadFavicon}
-                            uploading={faviconUploading}
+                            onFile={setFaviconFile}
                             label="Klik atau seret favicon"
-                            hint="ICO/PNG 32×32 atau 64×64, maks 2 MB"
+                            hint="PNG/ICO/WebP 32×32 atau 64×64, maks 512 KB"
                         />
+                        {faviconFile && (
+                            <p className="text-xs text-amber-600">
+                                Favicon baru dipilih — klik Simpan untuk menyimpan
+                            </p>
+                        )}
                     </div>
                 </div>
             </div>
 
             {/* Sections 2–4 — text fields */}
-            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+            <div className="space-y-5">
                 {/* Section 2 — Identitas Aplikasi */}
                 <div className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-neutral-100">
                     <div className="mb-5 flex items-center gap-2">
@@ -1068,12 +1057,12 @@ function BrandingTab({ settings }: { settings: Record<string, BrandingField> }) 
                 </div>
 
                 <div className="flex justify-end">
-                    <Button type="submit" disabled={isSubmitting || !isDirty} className="px-8">
-                        Simpan Pengaturan
+                    <Button type="submit" disabled={isSubmitting || !hasChanges} className="px-8">
+                        {isSubmitting ? 'Menyimpan...' : 'Simpan Pengaturan'}
                     </Button>
                 </div>
-            </form>
-        </div>
+            </div>
+        </form>
     );
 }
 

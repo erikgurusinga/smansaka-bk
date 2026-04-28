@@ -183,10 +183,27 @@ class SystemController extends Controller
             'principal_nip' => 'nullable|string|max:30',
             'coordinator_name' => 'nullable|string|max:100',
             'coordinator_nip' => 'nullable|string|max:30',
+            'logo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:2048',
+            'favicon' => 'nullable|image|mimes:jpg,jpeg,png,ico,webp|max:512',
         ]);
 
-        foreach ($data as $key => $value) {
-            Setting::set($key, $value ?? '');
+        $textKeys = [
+            'site_name', 'site_short_name', 'footer_text',
+            'school_name', 'school_address', 'npsn',
+            'school_phone', 'school_email', 'school_website',
+            'principal_name', 'principal_nip', 'coordinator_name', 'coordinator_nip',
+        ];
+
+        foreach ($textKeys as $key) {
+            Setting::set($key, $data[$key] ?? '');
+        }
+
+        if ($request->hasFile('logo')) {
+            $this->storeFile('logo', $request->file('logo'));
+        }
+
+        if ($request->hasFile('favicon')) {
+            $this->storeFile('favicon', $request->file('favicon'));
         }
 
         return back()->with('success', 'Profil sekolah berhasil disimpan.');

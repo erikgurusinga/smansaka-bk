@@ -18,6 +18,7 @@ use App\Http\Controllers\IndividualCounselingController;
 use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\RplBkController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SystemController;
 use App\Http\Controllers\SemesterProgramController;
 use App\Http\Controllers\SociometryController;
@@ -62,8 +63,9 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('module:dashboard,read')
         ->name('dashboard');
 
-    Route::get('profile', fn () => Inertia::render('Profile/Edit'))
-        ->name('profile.edit');
+    Route::get('profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::put('profile/password', [ProfileController::class, 'updatePassword'])->name('profile.password');
 
     /*
     |----------------------------------------------------------------------

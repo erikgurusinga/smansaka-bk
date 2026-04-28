@@ -831,6 +831,8 @@ function BrandingTab({ settings }: { settings: Record<string, BrandingField> }) 
 
     const onSubmit = (data: BrandingFormData) => {
         router.post(route('system.branding.update'), data, {
+            preserveState: true,
+            preserveScroll: true,
             onSuccess: () => toast.success('Pengaturan berhasil disimpan.'),
             onError: (e) => toast.error(Object.values(e)[0] as string),
         });
@@ -843,6 +845,8 @@ function BrandingTab({ settings }: { settings: Record<string, BrandingField> }) 
             { logo: file },
             {
                 forceFormData: true,
+                preserveState: true,
+                preserveScroll: true,
                 onSuccess: () => toast.success('Logo berhasil diunggah.'),
                 onError: () => toast.error('Gagal mengunggah logo.'),
                 onFinish: () => setLogoUploading(false),
@@ -857,6 +861,8 @@ function BrandingTab({ settings }: { settings: Record<string, BrandingField> }) 
             { favicon: file },
             {
                 forceFormData: true,
+                preserveState: true,
+                preserveScroll: true,
                 onSuccess: () => toast.success('Favicon berhasil diunggah.'),
                 onError: () => toast.error('Gagal mengunggah favicon.'),
                 onFinish: () => setFaviconUploading(false),
@@ -878,6 +884,7 @@ function BrandingTab({ settings }: { settings: Record<string, BrandingField> }) 
                     <div className="space-y-2">
                         <Label>Logo Sekolah</Label>
                         <FileDropZone
+                            key={logoUrl ?? 'no-logo'}
                             shape="wide"
                             currentUrl={logoUrl}
                             onFile={uploadLogo}
@@ -889,6 +896,7 @@ function BrandingTab({ settings }: { settings: Record<string, BrandingField> }) 
                     <div className="space-y-2">
                         <Label>Favicon</Label>
                         <FileDropZone
+                            key={faviconUrl ?? 'no-favicon'}
                             shape="square"
                             currentUrl={faviconUrl}
                             onFile={uploadFavicon}

@@ -25,3 +25,7 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# DB dumps
+smansaka_bk_dump.sql
+*.sql.bak

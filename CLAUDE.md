@@ -409,3 +409,21 @@ Setelah menyelesaikan satu fase pengembangan, **wajib**:
 2. Register di array `BOOKS` pada `doc/index.html`.
 3. Tambah baris di tabel "Daftar Buku" pada `doc/README.md`.
 4. Update bagian "Status Pengembangan" dan checklist fase di CLAUDE.md.
+
+---
+
+## Demo Kit
+
+File kunci:
+- `config/demo.php` — konfigurasi (enabled, branding, accounts, protected_routes)
+- `app/Http/Middleware/DemoMode.php` — blokir write ke route terproteksi saat demo aktif
+- `database/seeders/DemoSeeder.php` — seed data fiktif untuk instance demo
+- `app/Console/Commands/DemoResetCommand.php` — `php artisan demo:reset --force`
+
+Akun demo: `admin`/`admin12345`, `koorbk`/`koorbk12345`, `gurubk1`/`gurubk1`, `kepsek`/`kepsek12345`
+
+Route terproteksi: `system.users.*`, `system.groups.*`, `system.branding.*`, `profile.password`, `profile.photo`
+
+Scheduler reset otomatis setiap 2 jam — dikonfigurasi di `routes/console.php`.
+
+**PENTING:** `DEMO_MODE=false` di instance produksi. Aktifkan HANYA di instance demo terpisah dengan DB sendiri.

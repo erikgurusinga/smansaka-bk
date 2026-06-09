@@ -248,7 +248,7 @@ export default function AuthenticatedLayout({
     breadcrumbs,
     children,
 }: PropsWithChildren<Props>) {
-    const { auth, permissions, academic_year, branding } = usePage<PageProps>().props;
+    const { auth, permissions, academic_year, branding, demo } = usePage<PageProps>().props;
     const [mobileOpen, setMobileOpen] = useState(false);
     const [profileOpen, setProfileOpen] = useState(false);
 
@@ -293,7 +293,9 @@ export default function AuthenticatedLayout({
                                 <h1 className="text-sm leading-tight font-semibold">
                                     {branding.site_short_name}
                                 </h1>
-                                <p className="text-primary-100 text-xs">SMAN 1 Kabanjahe</p>
+                                <p className="text-primary-100 text-xs">
+                                    {branding.school_name || 'SMAN 1 Kabanjahe'}
+                                </p>
                             </div>
                         </div>
                     </Link>
@@ -342,6 +344,15 @@ export default function AuthenticatedLayout({
 
             {/* Main */}
             <div className="flex min-h-screen flex-1 flex-col md:ml-72">
+                {/* Banner mode demo */}
+                {demo?.enabled && (
+                    <div className="flex items-center justify-center gap-2 bg-amber-400 px-4 py-1.5 text-center text-xs font-medium text-amber-950">
+                        <span className="inline-block h-1.5 w-1.5 animate-pulse rounded-full bg-amber-900" />
+                        Mode Demo — semua data fiktif &amp; direset otomatis{' '}
+                        {demo.reset_interval_label ?? 'berkala'}. Beberapa aksi admin dinonaktifkan.
+                    </div>
+                )}
+
                 {/* Topbar */}
                 <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-neutral-100 bg-white px-4 md:px-6">
                     <button

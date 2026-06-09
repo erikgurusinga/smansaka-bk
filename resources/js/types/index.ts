@@ -373,6 +373,18 @@ export interface FlashMessages {
     info?: string;
 }
 
+export interface DemoAccount {
+    role: string;
+    username: string;
+    password: string;
+}
+
+export interface DemoInfo {
+    enabled: boolean;
+    reset_interval_label?: string;
+    accounts?: DemoAccount[];
+}
+
 export interface PageProps extends Record<string, unknown> {
     auth: {
         user: User | null;
@@ -384,5 +396,6 @@ export interface PageProps extends Record<string, unknown> {
         name: string;
         url: string;
     };
+    demo: DemoInfo;
     flash: FlashMessages;
 }

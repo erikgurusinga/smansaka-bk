@@ -34,6 +34,7 @@ class HandleInertiaRequests extends Middleware
                 'name' => config('app.name'),
                 'url' => config('app.url'),
             ],
+            'demo' => fn () => $this->getDemo(),
             'ziggy' => fn () => [
                 ...(new Ziggy)->toArray(),
                 'location' => $request->url(),
@@ -72,6 +73,18 @@ class HandleInertiaRequests extends Middleware
         $logo = $settings->get('logo');
         $favicon = $settings->get('favicon');
 
+        // Mode demo: timpa identitas sekolah asli dengan placeholder netral.
+        if (config('demo.enabled')) {
+            return [
+                'site_name' => config('demo.branding.site_name'),
+                'site_short_name' => config('demo.branding.site_short_name'),
+                'logo' => $logo ? asset('storage/'.$logo) : null,
+                'favicon' => $favicon ? asset('storage/'.$favicon) : null,
+                'footer_text' => $settings->get('footer_text') ?? '',
+                'school_name' => config('demo.branding.school_name'),
+            ];
+        }
+
         return [
             'site_name' => $settings->get('site_name') ?? config('app.name'),
             'site_short_name' => $settings->get('site_short_name') ?? 'BK SMANSAKA',
@@ -87,5 +100,22 @@ class HandleInertiaRequests extends Middleware
         $year = AcademicYear::where('is_active', true)->first();
 
         return $year?->only(['id', 'year', 'semester', 'start_date', 'end_date']);
+    }
+
+    /**
+     * Info mode demo untuk frontend. Saat nonaktif (produksi),
+     * hanya kirim flag false — tidak ada kredensial yang bocor.
+     */
+    protected function getDemo(): array
+    {
+        if (! config('demo.enabled')) {
+            return ['enabled' => false];
+        }
+
+        return [
+            'enabled' => true,
+            'reset_interval_label' => config('demo.reset_interval_label'),
+            'accounts' => config('demo.accounts', []),
+        ];
     }
 }

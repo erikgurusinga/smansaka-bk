@@ -21,7 +21,9 @@ export default function GuestLayout({ children }: PropsWithChildren) {
                             <h1 className="text-xl leading-tight font-semibold">
                                 {branding.site_short_name}
                             </h1>
-                            <p className="text-primary-100 text-sm">SMA Negeri 1 Kabanjahe</p>
+                            <p className="text-primary-100 text-sm">
+                                {branding.school_name || 'SMA Negeri 1 Kabanjahe'}
+                            </p>
                         </div>
                     </Link>
                 </div>
@@ -58,7 +60,7 @@ export default function GuestLayout({ children }: PropsWithChildren) {
                 </div>
 
                 <p className="text-primary-200 relative text-xs">
-                    © {new Date().getFullYear()} SMAN 1 Kabanjahe
+                    © {new Date().getFullYear()} {branding.school_name || 'SMAN 1 Kabanjahe'}
                 </p>
             </aside>
 
@@ -71,7 +73,9 @@ export default function GuestLayout({ children }: PropsWithChildren) {
                             <h1 className="text-primary-900 font-semibold">
                                 {branding.site_short_name}
                             </h1>
-                            <p className="text-sm text-neutral-500">SMA Negeri 1 Kabanjahe</p>
+                            <p className="text-sm text-neutral-500">
+                                {branding.school_name || 'SMA Negeri 1 Kabanjahe'}
+                            </p>
                         </div>
                     </div>
 
